@@ -35,6 +35,8 @@ const GROUPS: readonly Group[] = [
       { description: "Add a child", combos: [["Tab"]] },
       { description: "Rename", combos: [["Enter"], ["F2"]] },
       { description: "Label the line leading into it", combos: [["L"]] },
+      { description: "Colour it (in the palette's order)", combos: [["1–8"]] },
+      { description: "Clear its colour", combos: [["0"]] },
       { description: "Delete it and its branch", combos: [["Del"], ["Backspace"]] },
       { description: "Delete only it; its children move up", combos: [["Shift", "Del"]] },
       { description: "Clear the selection", combos: [["Esc"]] },
@@ -52,6 +54,7 @@ const GROUPS: readonly Group[] = [
     rows: [
       { description: "Select a node", combos: [["Click"]] },
       { description: "Rename a node, or label a line", combos: [["Double-click"]] },
+      { description: "Colour a node", combos: [["Right-click"]] },
       { description: "Pan the canvas", combos: [["Drag"]] },
       { description: "Zoom", combos: [["Scroll"]] },
     ],

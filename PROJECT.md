@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.5_
+_Last updated: 2026-09-29, v0.0.6_
 
 ## What it is
 
@@ -34,6 +34,9 @@ with Vitest tests.
   clearing the text removes the label. Labels sit just before the child
   they describe, the layout makes room for them, and they light up with
   the selected node
+- Colours: right-click a node for a menu of 8 fixed colours (or none), or
+  select it and press 1–8 (0 clears). The node gets a tint and border in
+  that colour; lines stay neutral, and new children start uncoloured
 - Delete: Delete/Backspace removes a node and its branch; Shift+Delete
   removes just the node and moves its children up
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);
@@ -51,8 +54,8 @@ with Vitest tests.
 ## What's next
 
 Rest of the MVP, roughly in this order:
-- Per-node colours (the data model and styling hook exist already)
-- Collapse/expand a branch (model and layout support it; needs a button)
+- Collapse/expand a branch (model and layout support it; needs a button,
+  and a place in the new right-click menu)
 - Keyboard navigation between nodes; pan to a new node if it lands off-screen
 - Export PNG/SVG; Mermaid flowchart import/export
 
@@ -63,7 +66,7 @@ Rest of the MVP, roughly in this order:
 - Deleting a node has no confirmation; undo is the safety net, but undo
   history is lost on reload (deleting a whole tree does ask first)
 - Two tabs open on the same tree overwrite each other's saves
-- The JS bundle is ~550 KB (177 KB gzipped); Vite warns above 500 KB. Fine
+- The JS bundle is ~560 KB (181 KB gzipped); Vite warns above 500 KB. Fine
   for now; splitting it is an option if load time ever matters
 - Mermaid graphs where a node has two parents won't fit the tree model as
   is; the model allows it later (edges are separate records), but the

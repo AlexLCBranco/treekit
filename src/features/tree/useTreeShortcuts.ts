@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { parentEdgeOf } from "../../domain/tree";
+import { PALETTE_COLORS } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -38,6 +39,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Tab                        add a child (and start naming it)
  *   Enter, F2                  rename
  *   L                          label the line leading into it
+ *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
  *   Shift+Delete/Backspace     delete only it; its children move up
  *   Esc                        clear the selection
@@ -85,6 +87,11 @@ export function useTreeShortcuts() {
         event.preventDefault();
         if (event.shiftKey) store.deleteNode(selectedId);
         else store.deleteBranch(selectedId);
+      } else if (/^[0-9]$/.test(key)) {
+        // 1-8 pick a palette colour in its listed order; 0 clears it.
+        const index = Number(key);
+        if (index === 0) store.setNodeColor(selectedId, null);
+        else if (index <= PALETTE_COLORS.length) store.setNodeColor(selectedId, PALETTE_COLORS[index - 1]);
       } else if (key === "escape") {
         store.select(null);
       }

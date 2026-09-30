@@ -4,7 +4,15 @@ import * as history from "../domain/history";
 import { createTreeId } from "../domain/ids";
 import { removeTree, upsertTree, type Registry } from "../domain/registry";
 import * as tree from "../domain/tree";
-import type { EdgeId, LayoutDirection, NodeId, TreeDoc, TreeId, TreeState } from "../domain/types";
+import type {
+  EdgeId,
+  LayoutDirection,
+  NodeId,
+  PaletteColor,
+  TreeDoc,
+  TreeId,
+  TreeState,
+} from "../domain/types";
 import {
   deleteStoredTree,
   loadActiveTreeId,
@@ -48,6 +56,8 @@ interface TreeStore {
 
   addChild: (parentId: NodeId) => void;
   renameNode: (nodeId: NodeId, title: string) => void;
+  /** Sets a node's palette colour; `null` clears it. */
+  setNodeColor: (nodeId: NodeId, color: PaletteColor | null) => void;
   /** Sets an edge's label; an empty string removes it. */
   setEdgeLabel: (edgeId: EdgeId, label: string) => void;
   /** Deletes the node and everything below it. */
@@ -169,6 +179,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         return { tree: next, history: history.amendLast(s.history, s.tree, next), newNodeId: null };
       }
       return commit(s, next);
+    }),
+
+  setNodeColor: (nodeId, color) =>
+    set((s) => {
+      const next = tree.setNodeColor(s.tree, nodeId, color);
+      return next === s.tree ? s : commit(s, next);
     }),
 
   setEdgeLabel: (edgeId, label) =>

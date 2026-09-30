@@ -15,6 +15,7 @@ import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import { LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
+import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
 import { TreeNodeView, type TreeFlowNode } from "./TreeNodeView";
@@ -146,33 +147,35 @@ function TreeCanvasInner() {
   }, []);
 
   return (
-    <div className={styles.canvas}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onNodeClick={(_, node) => select(node.id as NodeId)}
-        onEdgeClick={(_, edge) => select(edge.target as NodeId)}
-        onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
-        onPaneClick={() => select(null)}
-        nodesConnectable={false}
-        nodesDraggable={false}
-        // Double-click renames a node; zooming on it would fight that.
-        zoomOnDoubleClick={false}
-        // Tab is "add child" here, not React Flow's focus-cycling.
-        disableKeyboardA11y
-        deleteKeyCode={null}
-        minZoom={0.2}
-        maxZoom={2}
-        // Bottom-right belongs to the version badge.
-        attributionPosition="top-right"
-      >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
-        <Controls showInteractive={false} position="bottom-left" />
-      </ReactFlow>
-    </div>
+    <NodeContextMenu>
+      <div className={styles.canvas}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onNodeClick={(_, node) => select(node.id as NodeId)}
+          onEdgeClick={(_, edge) => select(edge.target as NodeId)}
+          onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
+          onPaneClick={() => select(null)}
+          nodesConnectable={false}
+          nodesDraggable={false}
+          // Double-click renames a node; zooming on it would fight that.
+          zoomOnDoubleClick={false}
+          // Tab is "add child" here, not React Flow's focus-cycling.
+          disableKeyboardA11y
+          deleteKeyCode={null}
+          minZoom={0.2}
+          maxZoom={2}
+          // Bottom-right belongs to the version badge.
+          attributionPosition="top-right"
+        >
+          <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
+          <Controls showInteractive={false} position="bottom-left" />
+        </ReactFlow>
+      </div>
+    </NodeContextMenu>
   );
 }
 

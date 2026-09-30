@@ -1,5 +1,5 @@
 import { createEdgeId, createNodeId } from "./ids";
-import type { EdgeId, LayoutDirection, NodeId, TreeEdge, TreeNode, TreeState } from "./types";
+import type { EdgeId, LayoutDirection, NodeId, PaletteColor, TreeEdge, TreeNode, TreeState } from "./types";
 
 /**
  * Pure tree operations. Each takes a `TreeState` and returns a new one,
@@ -63,6 +63,13 @@ export function renameNode(state: TreeState, nodeId: NodeId, title: string): Tre
   const node = state.nodes[nodeId];
   if (!node || node.title === title) return state;
   return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, title } } };
+}
+
+/** Sets a node's palette colour; `null` returns it to the default style. */
+export function setNodeColor(state: TreeState, nodeId: NodeId, color: PaletteColor | null): TreeState {
+  const node = state.nodes[nodeId];
+  if (!node || node.color === color) return state;
+  return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, color } } };
 }
 
 /** Sets the text on an edge; an empty string removes the label. */

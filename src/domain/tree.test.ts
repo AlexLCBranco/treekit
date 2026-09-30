@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { layoutTree, type Size } from "./layout";
-import { addChild, childrenOf, createTree, parentEdgeOf, renameNode, setEdgeLabel, visibleSubtree } from "./tree";
+import {
+  addChild,
+  childrenOf,
+  createTree,
+  parentEdgeOf,
+  renameNode,
+  setEdgeLabel,
+  setNodeColor,
+  visibleSubtree,
+} from "./tree";
 import type { EdgeId, NodeId, TreeState } from "./types";
 
 function add(state: TreeState, parent: NodeId, title = ""): { state: TreeState; id: NodeId } {
@@ -28,6 +37,20 @@ describe("tree operations", () => {
   it("ignores a missing parent", () => {
     const tree = createTree();
     expect(addChild(tree, "nope" as NodeId)).toEqual({ state: tree, nodeId: null });
+  });
+
+  it("sets and clears a node's colour", () => {
+    const tree = createTree();
+    const { state, id } = add(tree, tree.rootId);
+    const colored = setNodeColor(state, id, "red");
+    expect(colored.nodes[id].color).toBe("red");
+    // Only that node's record is new; the rest is shared.
+    expect(colored.nodes[state.rootId]).toBe(state.nodes[state.rootId]);
+    expect(colored.edges).toBe(state.edges);
+    // No-ops return the same state, so the store records no undo step.
+    expect(setNodeColor(colored, id, "red")).toBe(colored);
+    expect(setNodeColor(colored, "nope" as NodeId, "blue")).toBe(colored);
+    expect(setNodeColor(colored, id, null).nodes[id].color).toBeNull();
   });
 
   it("only copies the slices it touches", () => {
