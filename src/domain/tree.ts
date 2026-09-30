@@ -17,7 +17,7 @@ import type {
  */
 
 function makeNode(title: string): TreeNode {
-  return { id: createNodeId(), title, color: null, collapsed: false };
+  return { id: createNodeId(), title, color: null, collapsed: false, notes: "" };
 }
 
 /** A fresh tree with just a root node, at the board's origin. */
@@ -96,6 +96,13 @@ export function renameNode(state: TreeState, nodeId: NodeId, title: string): Tre
   const node = state.nodes[nodeId];
   if (!node || node.title === title) return state;
   return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, title } } };
+}
+
+/** Replaces a node's notes; an empty string removes them. */
+export function setNotes(state: TreeState, nodeId: NodeId, notes: string): TreeState {
+  const node = state.nodes[nodeId];
+  if (!node || node.notes === notes) return state;
+  return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, notes } } };
 }
 
 /** Sets a node's palette colour; `null` returns it to the default style. */

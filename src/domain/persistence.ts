@@ -20,17 +20,18 @@ import { PALETTE_COLORS } from "./types";
  * anything to migrate, because that is the only moment adding one is free
  * (same reasoning as Boardkit).
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
- * Version 1 had a single `rootId`; version 2 has `roots` (and `trash`).
- * `readTree` still reads version 1, turning its root into the only entry of
- * `roots`, so older saves open unchanged. (Roots saved briefly as
- * `{ id, x, y }` objects are read too; the position is ignored, since trees
- * now line up side by side.)
+ * Version 1 had a single `rootId`; version 2 has `roots` (and `trash`);
+ * version 3 adds `notes` to every node. `readTree` still reads the older
+ * ones, so they open unchanged: version 1's root becomes the only entry of
+ * `roots`, and nodes from before version 3 get empty notes. (Roots saved
+ * briefly as `{ id, x, y }` objects are read too; the position is ignored,
+ * since trees now line up side by side.)
  */
 export interface PersistedTree {
-  readonly version: 2;
+  readonly version: typeof SCHEMA_VERSION;
   readonly doc: TreeDoc;
 }
 
@@ -66,7 +67,15 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  * newer one -- "repairing" it would destroy what that version wrote).
  */
 export function readTree(data: unknown): TreeRead {
-  if (!isObject(data) || (data.version !== 1 && data.version !== 2) || !isObject(data.doc)) {
+  const version = isObject(data) ? data.version : undefined;
+  if (
+    !isObject(data) ||
+    typeof version !== "number" ||
+    !Number.isInteger(version) ||
+    version < 1 ||
+    version > SCHEMA_VERSION ||
+    !isObject(data.doc)
+  ) {
     return { status: "unreadable" };
   }
   const doc = data.doc;
@@ -93,8 +102,11 @@ export function readTree(data: unknown): TreeRead {
         ? (raw.color as PaletteColor | null)
         : fix(null);
     const collapsed = typeof raw.collapsed === "boolean" ? raw.collapsed : fix(false);
+    // Missing before version 3: that is a migration, not damage.
+    const notes =
+      typeof raw.notes === "string" ? raw.notes : version < 3 && raw.notes === undefined ? "" : fix("");
     if (raw.id !== key) fix(null);
-    nodes[id] = { id, title, color, collapsed };
+    nodes[id] = { id, title, color, collapsed, notes };
   }
 
   // Roots: the saved ones that exist (once each), or version 1's single one.

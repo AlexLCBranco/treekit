@@ -44,11 +44,12 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Tab                       add a child (and start naming it)
  *   Enter, F2                  rename
  *   L                          label the line leading into it
+ *   N                          open its notes
  *   Space                      collapse or expand its branch
  *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
  *   Shift+Delete/Backspace     delete only it; its children move up
- *   Esc                        clear the selection
+ *   Esc                        close the notes panel, else clear the selection
  *
  * All ignored while typing in a field, so the field's own undo and
  * Backspace keep working. Reads the store with `getState()` inside the
@@ -117,6 +118,10 @@ export function useTreeShortcuts() {
           event.preventDefault();
           store.startEditingLabel(edge.id);
         }
+      } else if (key === "n" && !event.shiftKey) {
+        // Otherwise the "n" would be typed into the notes as they open.
+        event.preventDefault();
+        store.openNotes(selectedId);
       } else if (key === " ") {
         // Also stops the page scrolling.
         event.preventDefault();
@@ -136,7 +141,8 @@ export function useTreeShortcuts() {
           store.setNodesColor(selectionOf(store), PALETTE_COLORS[index - 1]);
         }
       } else if (key === "escape") {
-        store.select(null);
+        if (store.notesOpen) store.closeNotes();
+        else store.select(null);
       }
     }
     window.addEventListener("keydown", onKeyDown);

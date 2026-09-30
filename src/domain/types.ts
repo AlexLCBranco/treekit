@@ -39,6 +39,9 @@ export interface TreeNode {
   readonly color: PaletteColor | null;
   /** Children are hidden (not deleted) while collapsed. */
   readonly collapsed: boolean;
+  /** Free multi-line text behind the title; empty string = no notes.
+      Never drawn on the node itself, so it never changes the layout. */
+  readonly notes: string;
 }
 
 export interface TreeEdge {

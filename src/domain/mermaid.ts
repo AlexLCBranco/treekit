@@ -5,7 +5,8 @@ import { PALETTE_COLORS, type EdgeId, type NodeId, type PaletteColor, type TreeS
  * Mermaid `flowchart` <-> tree. Pure text in, text or tree out.
  *
  * Export writes every node (folded branches included, and every tree on the board), the edge labels, the
- * direction and the node colours. Import understands the common flowchart
+ * direction, the node colours and the notes. Notes go in `%% notes` comment
+ * lines, which Mermaid ignores and import reads back. Import understands the common flowchart
  * subset -- nodes with any bracket shape, `-->` / `---` / `==>` / `-.->`
  * links with `|label|` or `-- label -->` text, chains (`A --> B --> C`) and
  * `&` lists -- and refuses what a tree cannot hold (two parents, loops,
@@ -53,6 +54,9 @@ function escapeText(text: string): string {
     .replace(/\r?\n/g, "<br/>");
 }
 
+/** The comment line that carries a node's notes: `%% notes n3 "text"`. */
+const NOTES_LINE = /^%%\s*notes\s+([\p{L}\p{N}_]+)\s+"(.*)"\s*$/u;
+
 export function toMermaid(state: TreeState): string {
   // Short ids in reading order (depth-first, siblings in order, one root after the other).
   const ids = new Map<NodeId, string>();
@@ -85,6 +89,10 @@ export function toMermaid(state: TreeState): string {
     const hex = PALETTE_HEX[color];
     lines.push(`    style ${ids.get(nodeId)} fill:${tint(hex, 0.22)},stroke:${hex}`);
   }
+  for (const nodeId of order) {
+    const notes = state.nodes[nodeId].notes;
+    if (notes) lines.push(`    %% notes ${ids.get(nodeId)} "${escapeText(notes)}"`);
+  }
   return lines.join("\n") + "\n";
 }
 
@@ -103,14 +111,16 @@ interface Cursor {
 
 const ENTITIES: Record<string, string> = { quot: '"', amp: "&", lt: "<", gt: ">", nbsp: " " };
 
-function decodeText(raw: string): string {
-  return raw
+/** Undoes `escapeText`. Titles and labels are trimmed; notes keep their
+    spacing exactly (`trim: false`). */
+function decodeText(raw: string, trim = true): string {
+  const text = raw
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/#(\w+);/g, (whole, name: string) => {
       if (/^\d+$/.test(name)) return String.fromCodePoint(Number(name));
       return ENTITIES[name] ?? whole;
-    })
-    .trim();
+    });
+  return trim ? text.trim() : text;
 }
 
 function unquote(text: string): string {
@@ -207,6 +217,7 @@ interface Draft {
   readonly titles: Map<string, string>;
   readonly edges: { source: string; target: string; label: string }[];
   readonly colors: Map<string, PaletteColor>;
+  readonly notes: Map<string, string>;
 }
 
 function parseStatement(statement: string, draft: Draft) {
@@ -261,14 +272,27 @@ export function fromMermaid(text: string): MermaidResult {
 function parse(text: string): TreeState {
   // Mermaid Live and docs often start with a `---` front-matter block.
   const body = text.replace(/^\s*---\r?\n[\s\S]*?\r?\n---\s*(?:\r?\n|$)/, "");
-  const statements = splitStatements(body);
+  // Comment lines come out first: they may hold notes, and a stray quote in
+  // one must not throw off the quote tracking of the statements after it.
+  const notes = new Map<string, string>();
+  const code = body
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("%%")) return true;
+      const match = NOTES_LINE.exec(trimmed);
+      if (match) notes.set(match[1], decodeText(match[2], false));
+      return false;
+    })
+    .join("\n");
+  const statements = splitStatements(code);
   const header = /^(?:flowchart|graph)(?:\s+(TB|TD|BT|LR|RL))?$/i.exec(statements[0] ?? "");
   if (!header) {
     throw new ImportError("Only flowcharts are supported: the text should start with “flowchart TD” or “flowchart LR”.");
   }
   const direction = /^(LR|RL)$/i.test(header[1] ?? "") ? "LR" : "TB";
 
-  const draft: Draft = { titles: new Map(), edges: [], colors: new Map() };
+  const draft: Draft = { titles: new Map(), edges: [], colors: new Map(), notes };
   for (const statement of statements.slice(1)) {
     const keyword = /^(\w+)\b/.exec(statement)?.[1]?.toLowerCase();
     if (keyword === "subgraph") throw new ImportError("Subgraphs aren't supported yet.");
@@ -322,7 +346,13 @@ function parse(text: string): TreeState {
   const visit = (key: string) => {
     const nodeId = createNodeId();
     nodeIds.set(key, nodeId);
-    state.nodes[nodeId] = { id: nodeId, title: draft.titles.get(key) ?? "", color: draft.colors.get(key) ?? null, collapsed: false };
+    state.nodes[nodeId] = {
+      id: nodeId,
+      title: draft.titles.get(key) ?? "",
+      color: draft.colors.get(key) ?? null,
+      collapsed: false,
+      notes: draft.notes.get(key) ?? "",
+    };
     state.childEdges[nodeId] = [];
     for (const edge of outgoing.get(key) ?? []) {
       const child = visit(edge.target);

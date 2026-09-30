@@ -57,6 +57,12 @@ interface TreeStore {
   /** The edge whose label is open for editing, if any. At most one of
       `editingId` / `editingEdgeId` is set: one text field is open at a time. */
   readonly editingEdgeId: EdgeId | null;
+  /** The notes panel is open, showing the selected node's notes. */
+  readonly notesOpen: boolean;
+  /** The undo step the open notes session writes into: the node, and how
+      long `history.past` was once that step was recorded. While both still
+      match, more typing amends that step instead of adding one per key. */
+  readonly notesStep: { readonly nodeId: NodeId; readonly depth: number } | null;
 
   addChild: (parentId: NodeId) => void;
   /** Starts another tree on the same board, at this position among the
@@ -91,6 +97,12 @@ interface TreeStore {
   deleteBranches: (nodeIds: readonly NodeId[]) => void;
   /** Colours several nodes as one undo step; `null` clears. */
   setNodesColor: (nodeIds: readonly NodeId[], color: PaletteColor | null) => void;
+  /** Replaces a node's notes. One panel session (open to close, or until
+      another node is shown) is one undo step. */
+  setNotes: (nodeId: NodeId, notes: string) => void;
+  /** Opens the notes panel on this node (and selects it). */
+  openNotes: (nodeId: NodeId) => void;
+  closeNotes: () => void;
   startEditing: (nodeId: NodeId) => void;
   stopEditing: () => void;
   /** Opens an edge's label for editing and selects the node it leads to,
@@ -154,6 +166,8 @@ function open(s: TreeStore, doc: TreeDoc, trees: Registry): Partial<TreeStore> {
     selectedId: null,
     editingId: null,
     editingEdgeId: null,
+    notesOpen: false,
+    notesStep: null,
   };
 }
 
@@ -196,6 +210,8 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   selectedIds: [],
   editingId: null,
   editingEdgeId: null,
+  notesOpen: false,
+  notesStep: null,
 
   addChild: (parentId) =>
     set((s) => {
@@ -367,6 +383,27 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return next === s.tree ? s : commit(s, next);
     }),
 
+  setNotes: (nodeId, notes) =>
+    set((s) => {
+      const next = tree.setNotes(s.tree, nodeId, notes);
+      if (next === s.tree) return s;
+      const step = s.notesStep;
+      if (step && step.nodeId === nodeId && step.depth === s.history.past.length) {
+        return { tree: next, history: history.amendLast(s.history, s.tree, next) };
+      }
+      const committed = commit(s, next);
+      return { ...committed, notesStep: { nodeId, depth: committed.history.past.length } };
+    }),
+
+  openNotes: (nodeId) =>
+    set((s) =>
+      s.tree.nodes[nodeId]
+        ? { notesOpen: true, notesStep: null, selectedId: nodeId, selectedIds: [nodeId], editingId: null, editingEdgeId: null }
+        : s,
+    ),
+
+  closeNotes: () => set({ notesOpen: false, notesStep: null }),
+
   startEditing: (nodeId) => set({ selectedId: nodeId, editingId: nodeId, editingEdgeId: null }),
 
   startEditingLabel: (edgeId) =>
@@ -442,3 +479,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     set((state) => open(state, doc, trees));
   },
 }));
+
+// The notes panel follows the selection. Showing another node ends the
+// editing session (its next keystroke starts a new undo step), and with
+// nothing selected there is nothing to show, so the panel closes -- that
+// is also what clicking empty canvas does.
+useTreeStore.subscribe((s, prev) => {
+  if (s.selectedId === prev.selectedId || (!s.notesOpen && !s.notesStep)) return;
+  useTreeStore.setState(s.selectedId ? { notesStep: null } : { notesOpen: false, notesStep: null });
+});

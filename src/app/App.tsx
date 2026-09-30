@@ -1,4 +1,5 @@
 import { ExportMenu } from "../features/export/ExportMenu";
+import { NotesPanel } from "../features/notes/NotesPanel";
 import { AlignPanel } from "../features/tree/AlignPanel";
 import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
@@ -34,6 +35,7 @@ export function App() {
             sizes, the glide animation and the camera all start fresh
             instead of animating one tree into another. */}
         <TreeCanvas key={treeId} />
+        <NotesPanel />
       </main>
       <VersionBadge />
     </div>

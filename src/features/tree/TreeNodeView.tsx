@@ -1,5 +1,5 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from "@xyflow/react";
-import { ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, NotebookPen, StickyNote, Trash2 } from "lucide-react";
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
@@ -15,9 +15,10 @@ export type TreeFlowNode = Node<Record<string, never>, "tree">;
 
 /**
  * One node on the canvas: its title (inline-renamable), a "+" on the side
- * the tree grows towards, and on hover a toolbar above it that folds the
- * branch and deletes it (a root sends its whole tree to the trash instead).
- * A folded node shows how many nodes it hides.
+ * the tree grows towards, and on hover a toolbar above it that opens the
+ * notes, folds the branch and deletes it (a root sends its whole tree to
+ * the trash instead). A folded node shows how many nodes it hides; a node
+ * with notes shows an icon, and their first lines on hover.
  *
  * Subscribes narrowly: only to its own node record, its child count,
  * whether it is being edited, and the tree's direction. Renaming one node
@@ -38,6 +39,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
     s.tree.nodes[nodeId]?.collapsed ? hiddenCount(s.tree, nodeId) : 0,
   );
   const toggleCollapsed = useTreeStore((s) => s.toggleCollapsed);
+  const openNotes = useTreeStore((s) => s.openNotes);
   const addChild = useTreeStore((s) => s.addChild);
   const renameNode = useTreeStore((s) => s.renameNode);
   const startEditing = useTreeStore((s) => s.startEditing);
@@ -63,6 +65,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       data-root={isRoot || undefined}
       data-colored={node.color ? true : undefined}
       data-collapsed={node.collapsed || undefined}
+      data-notes={node.notes ? true : undefined}
       data-direction={direction}
       style={style}
       onDoubleClick={() => startEditing(nodeId)}
@@ -127,44 +130,67 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
         </button>
       )}
 
+      {/* Notes: a small icon in the corner says there are some; hovering
+          shows their first lines. Both float, so notes never resize the node. */}
+      {node.notes && (
+        <>
+          <span className={styles.notesIcon} aria-label="Has notes" role="img">
+            <StickyNote size={10} aria-hidden />
+          </span>
+          <div className={styles.notesPreview} aria-hidden>
+            <p className={styles.notesPreviewText}>{node.notes}</p>
+          </div>
+        </>
+      )}
+
       {/* The hover toolbar: a pill floating above the node, like Boardkit's
           card actions, so its buttons never crowd the node's edges. */}
-      {(childCount > 0 || canDelete) && (
-        <div
-          className={`${styles.toolbar} nodrag nopan`}
-          onDoubleClick={(event) => event.stopPropagation()}
+      <div
+        className={`${styles.toolbar} nodrag nopan`}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className={styles.toolbarButton}
+          onClick={(event) => {
+            event.stopPropagation();
+            openNotes(nodeId);
+          }}
+          aria-label="Notes"
+          title="Notes (N)"
         >
-          {childCount > 0 && (
-            <button
-              type="button"
-              className={styles.toolbarButton}
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleCollapsed(nodeId);
-              }}
-              aria-label={node.collapsed ? "Expand branch" : "Collapse branch"}
-              aria-expanded={!node.collapsed}
-              title={node.collapsed ? "Expand branch (Space)" : "Collapse branch (Space)"}
-            >
-              {node.collapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />}
-            </button>
-          )}
-          {canDelete && (
-            <button
-              type="button"
-              className={`${styles.toolbarButton} ${styles.delete}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                deleteBranch(nodeId);
-              }}
-              aria-label={isRoot ? "Delete tree" : "Delete branch"}
-              title={isRoot ? "Delete tree (Del)" : "Delete branch (Del)"}
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      )}
+          <NotebookPen size={14} />
+        </button>
+        {childCount > 0 && (
+          <button
+            type="button"
+            className={styles.toolbarButton}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleCollapsed(nodeId);
+            }}
+            aria-label={node.collapsed ? "Expand branch" : "Collapse branch"}
+            aria-expanded={!node.collapsed}
+            title={node.collapsed ? "Expand branch (Space)" : "Collapse branch (Space)"}
+          >
+            {node.collapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />}
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            className={`${styles.toolbarButton} ${styles.delete}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              deleteBranch(nodeId);
+            }}
+            aria-label={isRoot ? "Delete tree" : "Delete branch"}
+            title={isRoot ? "Delete tree (Del)" : "Delete branch (Del)"}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
     </div>
   );
 });

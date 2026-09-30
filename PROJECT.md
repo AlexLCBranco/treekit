@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.27_
+_Last updated: 2026-09-30, v0.0.28_
 
 ## What it is
 
@@ -51,11 +51,20 @@ with Vitest tests.
   trees and is saved with the board and undoable. The last tree on a board
   can't be deleted. Other nodes are still deleted straight away (undo)
 - Hovering or selecting a node shows a small toolbar floating above it:
-  fold/unfold the branch, and a trash button that deletes the node and its
+  notes, fold/unfold the branch, and a trash button that deletes the node and its
   branch (on a root: sends the tree to the trash), just like Space and Delete.
   Only "+" stays on the node's edge, so nothing crowds the node
 - A root node on a dot-grid page
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
+- Notes: every node can hold free multi-line text behind its title. Open
+  them with N, the notes button in the hover toolbar, or the right-click
+  menu: a side panel (below the header) shows the node's title and a text
+  box that saves as you type. While it is open, selecting another node
+  (click or arrows) switches the panel to it; Esc or clicking elsewhere
+  closes it. One editing session (open to close, or until another node is
+  shown) is one undo step. A node with notes shows a small icon on its
+  corner, and hovering it shows the first four lines. Notes never change a
+  node's size or the layout
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
@@ -82,7 +91,8 @@ with Vitest tests.
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);
   adding a child and naming it undo as one step
 - Auto-save: the tree is saved as you go and comes back on reload; a
-  damaged save opens repaired, with the original kept aside
+  damaged save opens repaired, with the original kept aside. The save
+  format is versioned (now v3, which added notes); older saves open unchanged
 - Automatic tidy layout, top-down or left-right (toggle in the header);
   sibling order is kept, long titles wrap, and nodes glide to new places
 - Multiple trees: the tree's name in the header (click to rename) and a
@@ -91,9 +101,10 @@ with Vitest tests.
 - A keyboard button in the header (or press ?) opens a list of every
   shortcut and mouse gesture, like Boardkit's
 - Export and import (the download button in the header): PNG or SVG of the
-  whole tree (folded branches unfolded, no buttons or selection, in the
-  current light/dark theme); copy or download the tree as a Mermaid
-  flowchart (labels, colours and direction included); import pasted
+  whole tree (folded branches unfolded, no buttons or selection, titles
+  only, in the current light/dark theme); copy or download the tree as a
+  Mermaid flowchart (labels, colours, direction and notes included; notes
+  go in `%% notes` comment lines, which Mermaid ignores and import reads back); import pasted
   Mermaid as a new tree. Import understands the usual flowchart syntax
   (any node shape, `-->`/`---`/`==>`/`-.->`, `|label|` or `-- label -->`,
   chains, `&`) and refuses, naming the node, what a tree can't hold: two
@@ -101,7 +112,11 @@ with Vitest tests.
 
 ## What's next
 
-The MVP list is done. Ideas, not yet ordered:
+In progress, in this order (the "sandbox" set, for branching stories):
+- Fork a branch into a new tree beside the current one
+- Node status: keep / maybe / cut, with a "Hide cut branches" toggle
+
+Ideas, not yet ordered:
 - Mermaid subgraphs, and nodes with two parents (needs a graph layout)
 - Import Mermaid with several starting points as several trees on one board
   (export already writes every tree; import still refuses more than one)

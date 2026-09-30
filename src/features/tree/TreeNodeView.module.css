@@ -200,3 +200,69 @@
   border-color: var(--node-accent);
   color: var(--ink-light);
 }
+
+/* Notes: a small icon on the top-right corner, straddling the border like
+   a badge, so it takes no room inside the node. */
+.notesIcon {
+  position: absolute;
+  top: calc(-1 * var(--space-2));
+  right: calc(-1 * var(--space-2));
+  display: grid;
+  place-items: center;
+  width: var(--space-4);
+  height: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* Hovering shows the notes' first lines in a card under the node (under
+   "+" in a top-down tree). A short delay keeps it from flashing while the
+   mouse just passes over. */
+.notesPreview {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  width: max-content;
+  max-width: var(--node-max-width);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-normal);
+  line-height: var(--line-normal);
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-1 * var(--space-1)));
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+/* The first four lines. Clamped here, not on the card, so a fifth line
+   can't peek into the card's padding. */
+.notesPreviewText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.node[data-direction="TB"] .notesPreview {
+  top: calc(100% + var(--node-button-size) / 2 + var(--space-2));
+}
+
+.node:hover .notesPreview {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition-delay: var(--delay-hover-preview);
+}

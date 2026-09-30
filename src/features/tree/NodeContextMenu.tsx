@@ -1,4 +1,4 @@
-import { ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, NotebookPen } from "lucide-react";
 import { useState, type MouseEvent, type ReactElement } from "react";
 
 import {
@@ -22,7 +22,7 @@ function capitalise(word: string): string {
 }
 
 /**
- * The right-click menu for nodes: collapse/expand (for nodes with
+ * The right-click menu for nodes: notes, collapse/expand (for nodes with
  * children) and the colour palette.
  *
  * One menu wraps the whole canvas rather than one per node: on right-click
@@ -65,10 +65,23 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
         // canvas keyboard shortcuts keep working after the menu closes.
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
+        {targetId && <NotesItem nodeId={targetId} />}
         {targetId && <CollapseItem nodeId={targetId} />}
         {targetId && <ColorItems nodeId={targetId} />}
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+/** "Notes…": opens the notes panel on this node. */
+function NotesItem({ nodeId }: { readonly nodeId: NodeId }) {
+  const openNotes = useTreeStore((s) => s.openNotes);
+  return (
+    <ContextMenuItem onSelect={() => openNotes(nodeId)}>
+      <NotebookPen aria-hidden />
+      Notes…
+      <ContextMenuShortcut>N</ContextMenuShortcut>
+    </ContextMenuItem>
   );
 }
 
