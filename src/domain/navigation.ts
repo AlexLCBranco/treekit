@@ -105,7 +105,7 @@ export type Align = "start" | "center" | "end";
 /**
  * The page the trees are drawn on, like Boardkit's board: the size of the
  * screen, and bigger (so it scrolls) only on an axis where the trees plus
- * `margin` on each side do not fit. `x`/`y` move the trees onto the page:
+ * `margin` around them do not fit. `x`/`y` move the trees onto the page:
  * flush to the start / centred / flush to the end of each axis, `margin` in
  * from the edge. The trees are drawn at `zoom` (the zoom pill's choice,
  * never fitted automatically); the margin stays in screen pixels.
@@ -117,20 +117,26 @@ export interface PagePlacement {
   readonly y: number;
 }
 
+/** Gap between the trees and each page edge; a plain number is the same on all four. */
+export type PageMargin =
+  | number
+  | { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
+
 export function placeOnPage(
   bounds: Rect,
   screen: Size,
   align: { x: Align; y: Align },
-  margin: number,
+  margin: PageMargin,
   zoom = 1,
 ): PagePlacement {
-  const axis = (start: number, size: number, room: number, a: Align) => {
-    const page = Math.max(room, size * zoom + 2 * margin);
-    const free = page - size * zoom - 2 * margin;
-    return { page, offset: margin + (a === "start" ? 0 : a === "center" ? free / 2 : free) - start * zoom };
+  const m = typeof margin === "number" ? { top: margin, right: margin, bottom: margin, left: margin } : margin;
+  const axis = (start: number, size: number, room: number, a: Align, lo: number, hi: number) => {
+    const page = Math.max(room, size * zoom + lo + hi);
+    const free = page - size * zoom - lo - hi;
+    return { page, offset: lo + (a === "start" ? 0 : a === "center" ? free / 2 : free) - start * zoom };
   };
-  const x = axis(bounds.x, bounds.width, screen.width, align.x);
-  const y = axis(bounds.y, bounds.height, screen.height, align.y);
+  const x = axis(bounds.x, bounds.width, screen.width, align.x, m.left, m.right);
+  const y = axis(bounds.y, bounds.height, screen.height, align.y, m.top, m.bottom);
   return { width: x.page, height: y.page, x: x.offset, y: y.offset };
 }
 

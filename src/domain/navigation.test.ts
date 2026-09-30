@@ -115,6 +115,12 @@ describe("placeOnPage", () => {
       y: 20,
     });
   });
+
+  it("takes a different margin per edge", () => {
+    const margin = { top: 10, right: 40, bottom: 70, left: 40 };
+    expect(placeOnPage(bounds, screen, { x: "start", y: "start" }, margin)).toEqual({ width: 800, height: 600, x: 240, y: 0 });
+    expect(placeOnPage(bounds, screen, { x: "start", y: "end" }, margin)).toEqual({ width: 800, height: 600, x: 240, y: 220 });
+  });
 });
 
 describe("scrollToReveal", () => {

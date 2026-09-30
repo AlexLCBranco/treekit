@@ -20,5 +20,7 @@ export const LAYOUT_TWEEN_MS = 220;
 export const FRAME_PAN_MS = LAYOUT_TWEEN_MS;
 
 /** Distance (screen pixels) between the tree and the page edge it is aligned
-    to. Leaves room for the header controls, cursor tools and version badge. */
+    to. Sides and bottom leave room for the zoom pill, cursor tools and
+    version badge; the header sits above the page, so the top needs less. */
 export const FRAME_MARGIN = 72;
+export const FRAME_MARGINS = { top: 32, right: FRAME_MARGIN, bottom: FRAME_MARGIN, left: FRAME_MARGIN };

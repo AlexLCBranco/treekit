@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.24_
+_Last updated: 2026-09-30, v0.0.25_
 
 ## What it is
 
@@ -39,7 +39,7 @@ with Vitest tests.
   it touches. With several picked, 1–8 / 0 colour
   them all and Delete removes their branches, each as one undo step; other
   shortcuts (arrows, Tab, rename) work on the last one picked
-- Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
+- Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits. Aligned to the top, the tree sits just under the header (a small gap); the other edges keep a wider gap for the zoom pill and cursor tools
 - Several trees on one board: double-click empty canvas to start another
   tree (open for naming). Trees always sit side by side (in a row top-down,
   a column left-right) from the same start line, and the Align panel places

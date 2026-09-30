@@ -16,7 +16,7 @@ import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
-import { FRAME_MARGIN, FRAME_PAN_MS, LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
+import { FRAME_MARGIN, FRAME_MARGINS, FRAME_PAN_MS, LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
@@ -134,7 +134,7 @@ function TreeCanvasInner() {
     }
     if (minX === Infinity) return null;
     const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    return placeOnPage(bounds, screen, alignment, FRAME_MARGIN, zoom);
+    return placeOnPage(bounds, screen, alignment, FRAME_MARGINS, zoom);
   }, [hasSettled, screen, targets, sizes, alignment, zoom]);
 
   // Move the tree onto the page. The first placement snaps (after a frame,
