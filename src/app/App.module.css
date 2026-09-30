@@ -19,6 +19,10 @@
   font-weight: var(--weight-bold);
 }
 
+.spacer {
+  flex: 1;
+}
+
 .main {
   flex: 1;
   min-height: 0;

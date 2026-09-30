@@ -12,7 +12,7 @@ import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
-import { visibleSubtree } from "../../domain/tree";
+import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import { LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
@@ -59,13 +59,7 @@ function TreeCanvasInner() {
   const [hasSettled, setHasSettled] = useState(false);
   if (allMeasured && !hasSettled) setHasSettled(true);
 
-  const parentOf = useCallback(
-    (id: NodeId) => {
-      for (const edge of Object.values(tree.edges)) if (edge.target === id) return edge.source;
-      return null;
-    },
-    [tree.edges],
-  );
+  const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
   const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
 
   // Frame the tree once it first has real sizes, capped at 100% so a lone

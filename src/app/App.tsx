@@ -1,4 +1,6 @@
 import { DirectionToggle } from "../features/tree/DirectionToggle";
+import { HistoryButtons } from "../features/tree/HistoryButtons";
+import { ShortcutHint } from "../features/tree/ShortcutHint";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
 import styles from "./App.module.css";
 import { VersionBadge } from "./VersionBadge";
@@ -13,7 +15,10 @@ export function App() {
     <div className={styles.app}>
       <header className={styles.header}>
         <h1 className={styles.title}>Treekit</h1>
+        <HistoryButtons />
         <DirectionToggle />
+        <div className={styles.spacer} />
+        <ShortcutHint />
       </header>
       <main className={styles.main}>
         <TreeCanvas />

@@ -10,31 +10,56 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Canvas keyboard shortcuts, acting on the selected node:
- *   Tab        add a child (and start naming it)
- *   Enter, F2  rename
- *   Esc        clear the selection
- * Mind-map tools (XMind, MindNode) use the same Tab/Enter convention.
+ * Canvas keyboard shortcuts. Mind-map tools (XMind, MindNode) use the same
+ * Tab/Enter convention.
  *
- * Reads the store with `getState()` inside the handler rather than
- * subscribing, so the listener is attached once and never re-renders the
- * canvas.
+ *   Ctrl/Cmd+Z                 undo
+ *   Ctrl/Cmd+Shift+Z, Ctrl+Y   redo
+ * On the selected node:
+ *   Tab                        add a child (and start naming it)
+ *   Enter, F2                  rename
+ *   Delete, Backspace          delete it and its branch
+ *   Shift+Delete/Backspace     delete only it; its children move up
+ *   Esc                        clear the selection
+ *
+ * All ignored while typing in a field, so the field's own undo and
+ * Backspace keep working. Reads the store with `getState()` inside the
+ * handler rather than subscribing, so the listener is attached once and
+ * never re-renders the canvas.
  */
 export function useTreeShortcuts() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (isTyping(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
-      const { selectedId, addChild, startEditing, select } = useTreeStore.getState();
+      if (isTyping(event.target) || event.altKey) return;
+      const store = useTreeStore.getState();
+      const key = event.key.toLowerCase();
+
+      if (event.ctrlKey || event.metaKey) {
+        if (key === "z" && !event.shiftKey) {
+          event.preventDefault();
+          store.undo();
+        } else if ((key === "z" && event.shiftKey) || key === "y") {
+          event.preventDefault();
+          store.redo();
+        }
+        return;
+      }
+
+      const { selectedId } = store;
       if (!selectedId) return;
 
-      if (event.key === "Tab") {
+      if (key === "tab") {
         event.preventDefault();
-        addChild(selectedId);
-      } else if (event.key === "Enter" || event.key === "F2") {
+        store.addChild(selectedId);
+      } else if (key === "enter" || key === "f2") {
         event.preventDefault();
-        startEditing(selectedId);
-      } else if (event.key === "Escape") {
-        select(null);
+        store.startEditing(selectedId);
+      } else if (key === "delete" || key === "backspace") {
+        event.preventDefault();
+        if (event.shiftKey) store.deleteNode(selectedId);
+        else store.deleteBranch(selectedId);
+      } else if (key === "escape") {
+        store.select(null);
       }
     }
     window.addEventListener("keydown", onKeyDown);

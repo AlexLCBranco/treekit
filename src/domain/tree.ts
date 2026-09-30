@@ -69,6 +69,91 @@ export function setDirection(state: TreeState, direction: LayoutDirection): Tree
   return state.direction === direction ? state : { ...state, direction };
 }
 
+/** The edge leading into `nodeId` from its parent; `null` for the root. */
+export function parentEdgeOf(state: TreeState, nodeId: NodeId): TreeEdge | null {
+  for (const edge of Object.values(state.edges)) if (edge.target === nodeId) return edge;
+  return null;
+}
+
+/** `nodeId` and everything below it, collapsed or not. */
+export function subtreeIds(state: TreeState, nodeId: NodeId): NodeId[] {
+  const ids: NodeId[] = [];
+  const stack = [nodeId];
+  let id: NodeId | undefined;
+  while ((id = stack.pop()) !== undefined) {
+    ids.push(id);
+    stack.push(...childrenOf(state, id));
+  }
+  return ids;
+}
+
+function omit<K extends string, V>(record: Readonly<Record<K, V>>, keys: Iterable<K>): Record<K, V> {
+  const copy = { ...record };
+  for (const key of keys) delete copy[key];
+  return copy;
+}
+
+/**
+ * Deletes a node and its whole branch. The root cannot be deleted: a tree
+ * always has one (deleting everything else is "delete each child").
+ */
+export function deleteBranch(state: TreeState, nodeId: NodeId): TreeState {
+  const incoming = parentEdgeOf(state, nodeId);
+  if (!incoming || !state.nodes[nodeId]) return state;
+
+  const removedNodes = subtreeIds(state, nodeId);
+  const removedEdges = [incoming.id, ...removedNodes.flatMap((id) => state.childEdges[id] ?? [])];
+
+  return {
+    ...state,
+    nodes: omit(state.nodes, removedNodes),
+    edges: omit(state.edges, removedEdges),
+    childEdges: {
+      ...omit(state.childEdges, removedNodes),
+      [incoming.source]: state.childEdges[incoming.source].filter((e) => e !== incoming.id),
+    },
+  };
+}
+
+/**
+ * Deletes just one node: its children move up to take its place among its
+ * parent's children, in the same order. Their own edge labels are kept; the
+ * deleted node's incoming label goes with it.
+ */
+export function deleteNode(state: TreeState, nodeId: NodeId): TreeState {
+  const incoming = parentEdgeOf(state, nodeId);
+  if (!incoming || !state.nodes[nodeId]) return state;
+
+  const parentId = incoming.source;
+  const childEdges = state.childEdges[nodeId] ?? [];
+  const edges = omit(state.edges, [incoming.id]);
+  for (const edgeId of childEdges) edges[edgeId] = { ...edges[edgeId], source: parentId };
+
+  const siblings = [...state.childEdges[parentId]];
+  siblings.splice(siblings.indexOf(incoming.id), 1, ...childEdges);
+
+  return {
+    ...state,
+    nodes: omit(state.nodes, [nodeId]),
+    edges,
+    childEdges: { ...omit(state.childEdges, [nodeId]), [parentId]: siblings },
+  };
+}
+
+/**
+ * Which node to select after `nodeId` is deleted: the next sibling, else
+ * the previous one, else the parent -- so pressing Delete repeatedly clears
+ * a row of siblings before climbing up the tree.
+ */
+export function neighbourAfterDelete(state: TreeState, nodeId: NodeId): NodeId | null {
+  const incoming = parentEdgeOf(state, nodeId);
+  if (!incoming) return null;
+  const siblings = state.childEdges[incoming.source];
+  const index = siblings.indexOf(incoming.id);
+  const neighbour = siblings[index + 1] ?? siblings[index - 1];
+  return neighbour ? state.edges[neighbour].target : incoming.source;
+}
+
 /** Child node ids of `nodeId`, in sibling order. */
 export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
   return (state.childEdges[nodeId] ?? []).map((edgeId) => state.edges[edgeId].target);
