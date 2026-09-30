@@ -9,6 +9,24 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
+/** Focus is in a menu or dialog, which owns the keyboard (arrows, Enter,
+    Esc) -- Delete there must never delete a node behind it. */
+function inOverlay(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]') !== null
+  );
+}
+
+/** Node shortcuts only apply with focus on the canvas (or nowhere). With
+    focus on a header button, Tab must move focus and Enter press it. */
+function onCanvas(target: EventTarget | null): boolean {
+  return (
+    target === document.body ||
+    (target instanceof HTMLElement && target.closest(".react-flow") !== null)
+  );
+}
+
 /**
  * Canvas keyboard shortcuts. Mind-map tools (XMind, MindNode) use the same
  * Tab/Enter convention.
@@ -30,7 +48,7 @@ function isTyping(target: EventTarget | null): boolean {
 export function useTreeShortcuts() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (isTyping(event.target) || event.altKey) return;
+      if (isTyping(event.target) || inOverlay(event.target) || event.altKey) return;
       const store = useTreeStore.getState();
       const key = event.key.toLowerCase();
 
@@ -46,7 +64,7 @@ export function useTreeShortcuts() {
       }
 
       const { selectedId } = store;
-      if (!selectedId) return;
+      if (!selectedId || !onCanvas(event.target)) return;
 
       if (key === "tab") {
         event.preventDefault();

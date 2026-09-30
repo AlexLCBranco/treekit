@@ -154,6 +154,34 @@ export function neighbourAfterDelete(state: TreeState, nodeId: NodeId): NodeId |
   return neighbour ? state.edges[neighbour].target : incoming.source;
 }
 
+/**
+ * A copy of a whole tree with fresh node and edge ids, for "Duplicate
+ * tree". Fresh ids keep every node unique across all trees, which matters
+ * once nodes can be linked from other stones.
+ */
+export function cloneTree(state: TreeState): TreeState {
+  const nodeIds = new Map<NodeId, NodeId>();
+  const edgeIds = new Map<EdgeId, EdgeId>();
+  for (const id of Object.keys(state.nodes) as NodeId[]) nodeIds.set(id, createNodeId());
+  for (const id of Object.keys(state.edges) as EdgeId[]) edgeIds.set(id, createEdgeId());
+
+  const nodes: Record<NodeId, TreeNode> = {};
+  for (const node of Object.values(state.nodes)) {
+    const id = nodeIds.get(node.id)!;
+    nodes[id] = { ...node, id };
+  }
+  const edges: Record<EdgeId, TreeEdge> = {};
+  for (const edge of Object.values(state.edges)) {
+    const id = edgeIds.get(edge.id)!;
+    edges[id] = { ...edge, id, source: nodeIds.get(edge.source)!, target: nodeIds.get(edge.target)! };
+  }
+  const childEdges: Record<NodeId, EdgeId[]> = {};
+  for (const [id, list] of Object.entries(state.childEdges) as [NodeId, readonly EdgeId[]][]) {
+    childEdges[nodeIds.get(id)!] = list.map((e) => edgeIds.get(e)!);
+  }
+  return { rootId: nodeIds.get(state.rootId)!, nodes, edges, childEdges, direction: state.direction };
+}
+
 /** Child node ids of `nodeId`, in sibling order. */
 export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
   return (state.childEdges[nodeId] ?? []).map((edgeId) => state.edges[edgeId].target);

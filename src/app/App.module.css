@@ -13,12 +13,6 @@
   background: var(--surface-raised);
 }
 
-.title {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--weight-bold);
-}
-
 .spacer {
   flex: 1;
 }

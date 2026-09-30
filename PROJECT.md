@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.2_
+_Last updated: 2026-09-29, v0.0.3_
 
 ## What it is
 
@@ -17,9 +17,8 @@ now: accounts, backend, cloud sync, collaboration, AI, mobile.
 Vite, React 19, TypeScript (strict), Zustand, React Flow (`@xyflow/react`)
 as the pan/zoom canvas, a small hand-written tidy-tree layout (no layout
 library), CSS Modules + design tokens (copied from Boardkit) for the
-canvas, Tailwind v4 wired up for menus and dialogs (shadcn/ui components
-get added when the first one is needed), lucide icons. No backend: saved in
-the browser's localStorage. Layers:
+canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
+icons. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
 TypeScript (tree model and operations, layout, undo history, save format)
 with Vitest tests.
@@ -38,12 +37,14 @@ with Vitest tests.
   damaged save opens repaired, with the original kept aside
 - Automatic tidy layout, top-down or left-right (toggle in the header);
   sibling order is kept, long titles wrap, and nodes glide to new places
+- Multiple trees: the tree's name in the header (click to rename) and a
+  menu to switch trees, start a new one, duplicate or delete this one
+  (with a confirm); each tree keeps its own undo history for the session
 - A shortcut hint in the header that changes with what is selected
 
 ## What's next
 
 Rest of the MVP, roughly in this order:
-- Multiple trees (the save format already stores each tree separately)
 - Edge labels ("yes", "if he dies")
 - Per-node colours (the data model and styling hook exist already)
 - Collapse/expand a branch (model and layout support it; needs a button)
@@ -54,8 +55,11 @@ Rest of the MVP, roughly in this order:
 
 - A repaired save is only reported in the browser console; it needs a
   visible notice (and a way to restore the kept original)
-- Delete has no confirmation; undo is the safety net, but undo history is
-  lost on reload
+- Deleting a node has no confirmation; undo is the safety net, but undo
+  history is lost on reload (deleting a whole tree does ask first)
+- Two tabs open on the same tree overwrite each other's saves
+- The JS bundle is ~550 KB (177 KB gzipped); Vite warns above 500 KB. Fine
+  for now; splitting it is an option if load time ever matters
 - Mermaid graphs where a node has two parents won't fit the tree model as
   is; the model allows it later (edges are separate records), but the
   layout would need a graph algorithm (dagre/elk) for those

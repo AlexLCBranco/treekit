@@ -1,0 +1,46 @@
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.name {
+  max-width: 280px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--line-tight);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+button.name:hover {
+  background: var(--surface-hover);
+}
+
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.trigger:hover,
+.trigger[data-state="open"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* Keeps names aligned whether or not the row has the tick. */
+.check {
+  display: inline-block;
+  width: 1em;
+  color: var(--accent);
+}

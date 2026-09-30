@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -64,9 +66,8 @@ textarea {
 
 /**
  * shadcn/ui theme bridge (same as Boardkit): shadcn's semantic colour names
- * point straight at tokens.css, so there is never a second palette. No
- * shadcn components are installed yet; add them with `npx shadcn add ...`
- * when the first menu or dialog lands.
+ * point straight at tokens.css, so there is never a second palette. Add
+ * components with `npx shadcn add ...` (they land in components/ui/).
  */
 @theme inline {
   --color-background: var(--surface-app);

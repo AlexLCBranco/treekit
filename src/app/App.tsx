@@ -2,6 +2,8 @@ import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
 import { ShortcutHint } from "../features/tree/ShortcutHint";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
+import { TreeSwitcher } from "../features/trees/TreeSwitcher";
+import { useTreeStore } from "../store/treeStore";
 import styles from "./App.module.css";
 import { VersionBadge } from "./VersionBadge";
 
@@ -11,17 +13,21 @@ import { VersionBadge } from "./VersionBadge";
  * gauntlet) without changes here.
  */
 export function App() {
+  const treeId = useTreeStore((s) => s.treeId);
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Treekit</h1>
+        <TreeSwitcher />
         <HistoryButtons />
         <DirectionToggle />
         <div className={styles.spacer} />
         <ShortcutHint />
       </header>
       <main className={styles.main}>
-        <TreeCanvas />
+        {/* Keyed by tree: switching trees remounts the canvas, so measured
+            sizes, the glide animation and the camera all start fresh
+            instead of animating one tree into another. */}
+        <TreeCanvas key={treeId} />
       </main>
       <VersionBadge />
     </div>
