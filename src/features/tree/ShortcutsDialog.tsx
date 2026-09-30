@@ -26,7 +26,7 @@ const GROUPS: readonly Group[] = [
     rows: [
       { description: "Undo", combos: [[mod, "Z"]] },
       { description: "Redo", combos: [[mod, "Shift", "Z"], [mod, "Y"]] },
-      { description: "Select, hand (pan only) or laser pointer cursor", combos: [["V"], ["H"], ["K"]] },
+      { description: "Select or laser pointer cursor", combos: [["V"], ["K"]] },
       { description: "Show these shortcuts", combos: [["?"]] },
     ],
   },
@@ -62,9 +62,7 @@ const GROUPS: readonly Group[] = [
       { description: "Collapse or expand a branch", combos: [["Click −"], ["Click the count"]] },
       { description: "Colour or collapse a node", combos: [["Right-click"]] },
       { description: "Select several nodes (select cursor)", combos: [["Drag"]] },
-      { description: "Pan the canvas (hand cursor)", combos: [["Drag"], ["Middle-drag"]] },
       { description: "Leave a fading red trail (laser cursor)", combos: [["Drag"]] },
-      { description: "Zoom", combos: [["Scroll"]] },
     ],
   },
 ];

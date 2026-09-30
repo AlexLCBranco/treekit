@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alignViewport, arrowToMove, moveFrom, revealViewport } from "./navigation";
+import { alignViewport, arrowToMove, moveFrom } from "./navigation";
 import { addChild, createTree, setCollapsed } from "./tree";
 import type { NodeId, TreeState } from "./types";
 
@@ -84,34 +84,6 @@ describe("moveFrom", () => {
 
   it("ignores a missing node", () => {
     expect(moveFrom(sample().tree, "nope" as NodeId, "next")).toBeNull();
-  });
-});
-
-describe("revealViewport", () => {
-  const screen = { width: 800, height: 600 };
-  const size = { width: 100, height: 40 };
-  const vp = { x: 0, y: 0, zoom: 1 };
-
-  it("leaves the camera alone when the node is in view", () => {
-    expect(revealViewport(vp, screen, { x: 300, y: 300 }, size, 40)).toBeNull();
-  });
-
-  it("moves only as far as needed, keeping the margin", () => {
-    // Right edge at 900: move left so it ends at 800 - 40.
-    expect(revealViewport(vp, screen, { x: 800, y: 300 }, size, 40)).toEqual({ x: -140, y: 0, zoom: 1 });
-    // Above the top: move down so its top sits at 40.
-    expect(revealViewport(vp, screen, { x: 300, y: -100 }, size, 40)).toEqual({ x: 0, y: 140, zoom: 1 });
-  });
-
-  it("accounts for pan and zoom", () => {
-    // At zoom 2 the node spans screen x 1600..1800, shifted by -1000 -> 600..800.
-    const zoomed = { x: -1000, y: 0, zoom: 2 };
-    expect(revealViewport(zoomed, screen, { x: 800, y: 100 }, size, 40)).toEqual({ x: -1040, y: 0, zoom: 2 });
-  });
-
-  it("aligns a node bigger than the screen by its start", () => {
-    const huge = { width: 2000, height: 40 };
-    expect(revealViewport(vp, screen, { x: 500, y: 300 }, huge, 40)).toEqual({ x: -460, y: 0, zoom: 1 });
   });
 });
 

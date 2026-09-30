@@ -37,7 +37,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *
  *   Ctrl/Cmd+Z                 undo
  *   Ctrl/Cmd+Shift+Z, Ctrl+Y   redo
- *   V, H, K                    select / hand / laser cursor
+ *   V, K                       select / laser cursor
  * On the selected node:
  *   Arrows                    move to the parent, a child, or along the
  *                              row (any arrow selects the first root if nothing is)
@@ -97,7 +97,7 @@ export function useTreeShortcuts() {
       }
 
       if (!event.shiftKey) {
-        const tools: Record<string, Tool> = { v: "select", h: "hand", k: "laser" };
+        const tools: Record<string, Tool> = { v: "select", k: "laser" };
         const tool = tools[key];
         if (tool) return useViewStore.getState().setTool(tool);
       }

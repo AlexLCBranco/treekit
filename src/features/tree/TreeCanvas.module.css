@@ -41,28 +41,18 @@
   outline: none;
 }
 
-/* Cursor tools (see ToolPicker): select is the arrow, hand grabs, laser
-   points. */
+/* Cursor tools (see ToolPicker): select is the arrow, laser points. */
 .canvas :global(.react-flow__pane) {
   cursor: default;
-}
-
-.canvas[data-tool="hand"] :global(.react-flow__pane) {
-  cursor: grab;
-}
-
-.canvas[data-tool="hand"] :global(.react-flow__pane.dragging) {
-  cursor: grabbing;
 }
 
 .canvas[data-tool="laser"] :global(.react-flow__pane) {
   cursor: crosshair;
 }
 
-/* Hand and laser only look: every pointer event falls through nodes and
-   lines to the pane. React Flow sets pointer-events inline on nodes, hence
-   the !important. */
-.canvas[data-tool="hand"] :global(.react-flow__viewport *),
+/* Laser only looks: every pointer event falls through nodes and lines to
+   the pane. React Flow sets pointer-events inline on nodes, hence the
+   !important. */
 .canvas[data-tool="laser"] :global(.react-flow__viewport *) {
   pointer-events: none !important;
 }

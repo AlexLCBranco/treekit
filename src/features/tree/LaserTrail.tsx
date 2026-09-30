@@ -13,8 +13,8 @@ interface Point {
 /**
  * The laser cursor: while the pointer is held down over the canvas, it leaves
  * a red trail that fades out. Drawn on a canvas laid over the pane (which
- * ignores the mouse), listening on the host element instead so the wheel
- * still scrolls and zooms underneath. Nothing here touches the tree.
+ * ignores the mouse), listening on the host element instead. Nothing here
+ * touches the tree.
  */
 export function LaserTrail() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

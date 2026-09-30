@@ -9,7 +9,7 @@ export interface PageAlignment {
 }
 
 /** The active cursor tool, as in Excalidraw's presentation mode. */
-export type Tool = "select" | "hand" | "laser";
+export type Tool = "select" | "laser";
 
 const KEY = "treekit:align";
 

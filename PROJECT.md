@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.21_
+_Last updated: 2026-09-30, v0.0.22_
 
 ## What it is
 
@@ -15,7 +15,7 @@ now: accounts, backend, cloud sync, collaboration, AI, mobile.
 ## Stack
 
 Vite, React 19, TypeScript (strict), Zustand, React Flow (`@xyflow/react`)
-as the pan/zoom canvas, a small hand-written tidy-tree layout (no layout
+as the renderer (camera locked), a small hand-written tidy-tree layout (no layout
 library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
@@ -26,12 +26,15 @@ with Vitest tests.
 
 ## What works now
 
-- Cursor tools at the bottom of the canvas, like Excalidraw's presentation
-  mode: hand (drag pans, even from a node; nothing gets selected), select
-  (the default) and laser (drag leaves a fading red trail). Keys H, V, K;
-  the tool is not remembered across visits
-- Select tool: dragging empty canvas draws a marquee that picks every node
-  it touches (middle-drag still pans). With several picked, 1–8 / 0 colour
+- One fixed page, no infinite canvas: no pan, no zoom. The whole tree is
+  always fitted to the screen (shrunk only if it would not fit, never
+  enlarged past 100%) and refits after every edit, direction change and
+  window resize
+- Cursor tools at the bottom of the page: select (the default) and laser
+  (drag leaves a fading red trail). Keys V, K; the tool is not remembered
+  across visits
+- Select tool: dragging empty page draws a marquee that picks every node
+  it touches. With several picked, 1–8 / 0 colour
   them all and Delete removes their branches, each as one undo step; other
   shortcuts (arrows, Tab, rename) work on the last one picked
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
@@ -45,7 +48,7 @@ with Vitest tests.
   of the row), delete it for good, or empty the trash. It keeps the last 10
   trees and is saved with the board and undoable. The last tree on a board
   can't be deleted. Other nodes are still deleted straight away (undo)
-- A root node on a pan/zoom canvas with a dot grid and zoom controls; the mouse wheel scrolls the canvas, Ctrl+wheel or the zoom pill (− 100% +; click the % to reset) zoom
+- A root node on a dot-grid page
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
@@ -68,9 +71,6 @@ with Vitest tests.
   into a child, or along the whole row (crossing to cousins); in a
   left-right tree the arrows turn with it. Going down returns to the child
   you last had selected. With nothing selected, any arrow picks the root
-- The camera follows the selection: if a newly selected or new node would
-  be off-screen (or right at the edge), the canvas glides just far enough
-  to show it, and otherwise stays still
 - Delete: Delete/Backspace removes a node and its branch; Shift+Delete
   removes just the node and moves its children up
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);

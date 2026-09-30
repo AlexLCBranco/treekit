@@ -4,19 +4,19 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  useStoreApi,
+  useStore,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
-import { alignViewport, revealViewport } from "../../domain/navigation";
+import { alignViewport } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
-import { FRAME_MARGIN, LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
+import { FRAME_MARGIN, FRAME_PAN_MS, LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
@@ -25,7 +25,6 @@ import { useAnimatedPositions } from "./useAnimatedPositions";
 import { useTreeShortcuts } from "./useTreeShortcuts";
 import { LaserTrail } from "./LaserTrail";
 import { ToolPicker } from "./ToolPicker";
-import { ZoomControls } from "./ZoomControls";
 
 // Defined once at module level: React Flow warns (and re-mounts every
 // node) if this object changes identity between renders.
@@ -33,12 +32,13 @@ const nodeTypes = { tree: TreeNodeView };
 const edgeTypes = { tree: TreeEdgeView };
 
 /**
- * The tree on a pan/zoom canvas.
+ * The tree on a fixed, one-screen page: no panning or zooming. The camera
+ * is locked and refits the whole tree to the screen after every change.
  *
  * Data flow, one direction only:
  *   store tree -> tidy-tree layout (+ measured node sizes) -> glide animation
  *   -> React Flow nodes/edges.
- * React Flow is used as a renderer and camera, not as the source of truth:
+ * React Flow is used as a renderer, not as the source of truth:
  * nodes are not draggable, because the auto-layout decides where they go.
  * The only thing read back from React Flow is each node's measured size,
  * which the layout needs (a long title makes a taller node).
@@ -56,9 +56,10 @@ function TreeCanvasInner() {
   const addRoot = useTreeStore((s) => s.addRoot);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
   const tool = useViewStore((s) => s.tool);
-  const { getViewport, setViewport, screenToFlowPosition } = useReactFlow();
-  // React Flow's own store, read (not subscribed to) for the pane's size.
-  const flowStore = useStoreApi();
+  const { setViewport, screenToFlowPosition } = useReactFlow();
+  // The pane's size, so the tree refits when the window is resized.
+  const paneWidth = useStore((s) => s.width);
+  const paneHeight = useStore((s) => s.height);
 
   useTreeShortcuts();
 
@@ -96,72 +97,35 @@ function TreeCanvasInner() {
   const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
   const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
 
-  // Put the whole tree against the page as the Align panel says, never
-  // zoomed in past 100%. Reads the alignment at call time so it always
-  // follows the latest choice.
-  const frame = useCallback(
-    (duration: number) => {
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-      for (const [id, p] of targets) {
-        const size = sizes.get(id) ?? TREE_LAYOUT.fallbackSize;
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x + size.width);
-        maxY = Math.max(maxY, p.y + size.height);
-      }
-      if (minX === Infinity) return;
-      const { width, height } = flowStore.getState();
-      const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-      const { alignment } = useViewStore.getState();
-      void setViewport(alignViewport(bounds, { width, height }, alignment, FRAME_MARGIN, 1), { duration });
-    },
-    [setViewport, flowStore, targets, sizes],
-  );
-
-  // Frame the tree once it first has real sizes, capped at 100% so a lone
-  // root is not blown up to fill the screen.
-  const didFit = useRef(false);
-  // The selected node the camera last brought into view (see below).
-  const revealedId = useRef<NodeId | null>(null);
-  useEffect(() => {
-    if (!hasSettled || didFit.current) return;
-    didFit.current = true;
-    // The fit shows the whole tree, selection included; revealing it too
-    // would pan from the not-yet-fitted camera and fight the fit.
-    revealedId.current = useTreeStore.getState().selectedId;
-    requestAnimationFrame(() => frame(0));
-  }, [hasSettled, frame]);
-
-  // Pressing an Align icon re-frames the tree with a glide (the first
-  // frame above handles page load).
+  // Put the whole tree on the page as the Align panel says, never zoomed in
+  // past 100%, shrunk only as far as needed to fit. Runs after every change
+  // (edit, direction, alignment, window size), so the page never scrolls.
+  const alignment = useViewStore((s) => s.alignment);
   const applied = useViewStore((s) => s.applied);
-  const lastApplied = useRef(applied);
+  const didFit = useRef(false);
   useEffect(() => {
-    if (lastApplied.current === applied) return;
-    lastApplied.current = applied;
-    if (hasSettled) frame(REVEAL_PAN_MS);
-  }, [applied, hasSettled, frame]);
-
-  // Keep the selection in view: when a different node gets selected (arrow
-  // keys, a new child, the selection moving after a delete or undo), pan
-  // just far enough to show it. Only on a *change* of selection, so panning
-  // away from a selected node by hand is not undone by the next re-layout.
-  // Uses the node's target position, not its gliding one, so the camera
-  // heads straight for where the node will end up.
-  useEffect(() => {
-    if (!selectedId) revealedId.current = null;
-    if (!hasSettled || !selectedId || selectedId === revealedId.current) return;
-    revealedId.current = selectedId;
-    const position = targets.get(selectedId);
-    if (!position) return;
-    const { width, height } = flowStore.getState();
-    const size = sizes.get(selectedId) ?? TREE_LAYOUT.fallbackSize;
-    const next = revealViewport(getViewport(), { width, height }, position, size, REVEAL_MARGIN);
-    if (next) void setViewport(next, { duration: REVEAL_PAN_MS });
-  }, [selectedId, hasSettled, targets, sizes, flowStore, getViewport, setViewport]);
+    if (!hasSettled || paneWidth === 0 || paneHeight === 0) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const [id, p] of targets) {
+      const size = sizes.get(id) ?? TREE_LAYOUT.fallbackSize;
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + size.width);
+      maxY = Math.max(maxY, p.y + size.height);
+    }
+    if (minX === Infinity) return;
+    const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    const view = alignViewport(bounds, { width: paneWidth, height: paneHeight }, alignment, FRAME_MARGIN, 1);
+    // The first fit snaps (after a frame, so React Flow has its size); the
+    // rest glide together with the nodes.
+    const first = !didFit.current;
+    didFit.current = true;
+    if (first) requestAnimationFrame(() => void setViewport(view, { duration: 0 }));
+    else void setViewport(view, { duration: FRAME_PAN_MS });
+  }, [hasSettled, targets, sizes, alignment, applied, paneWidth, paneHeight, setViewport]);
 
   const nodes = useMemo<TreeFlowNode[]>(
     () =>
@@ -265,31 +229,30 @@ function TreeCanvasInner() {
           onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
           onPaneClick={() => select(null)}
           onDoubleClick={onCanvasDoubleClick}
-          // Drag means: pan (hand), draw a marquee (select) or laser. The
-          // middle button still pans in select mode.
-          panOnDrag={tool === "hand" ? true : tool === "select" ? [1] : false}
+          // Drag means: draw a marquee (select) or laser. Nothing pans.
+          panOnDrag={false}
           selectionOnDrag={tool === "select"}
           nodesConnectable={false}
           nodesDraggable={false}
           // Double-click renames a node; zooming on it would fight that.
           zoomOnDoubleClick={false}
-          // The wheel scrolls the canvas up/down (Shift = sideways); zoom
-          // lives on the zoom controls and Ctrl/Cmd + wheel or pinch.
-          panOnScroll
+          // The camera is locked: the tree is fitted to the screen instead.
+          panOnScroll={false}
           zoomOnScroll={false}
+          zoomOnPinch={false}
+          preventScrolling={false}
           // Tab is "add child" here, not React Flow's focus-cycling.
           disableKeyboardA11y
           // Space is "collapse/expand" here. React Flow would otherwise use
           // holding Space as "drag to pan", which plain drag already does.
           panActivationKeyCode={null}
           deleteKeyCode={null}
-          minZoom={0.2}
-          maxZoom={2}
+          minZoom={0.01}
+          maxZoom={1}
           // Bottom-right belongs to the version badge.
           attributionPosition="top-right"
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
-          <ZoomControls />
           <ToolPicker />
           {tool === "laser" && <LaserTrail />}
         </ReactFlow>

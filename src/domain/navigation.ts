@@ -3,7 +3,7 @@ import { childrenOf, parentEdgeOf, visibleSubtree } from "./tree";
 import type { LayoutDirection, NodeId, TreeState } from "./types";
 
 /**
- * Keyboard navigation and "keep the selection in view". Pure: no React,
+ * Keyboard navigation and the camera fit. Pure: no React,
  * no store, no React Flow.
  *
  * Moves follow the tree's structure, not screen geometry: "up the tree",
@@ -102,35 +102,6 @@ export interface Viewport {
   readonly x: number;
   readonly y: number;
   readonly zoom: number;
-}
-
-/**
- * The smallest camera move that brings a node fully on screen with
- * `margin` screen pixels to spare, or `null` if it already is. Moving only
- * as far as needed (rather than centring) keeps the view calm while you
- * walk around a tree that already fits.
- *
- * A node too big for the screen is aligned by its start (top / left), so
- * its title stays readable.
- */
-export function revealViewport(
-  viewport: Viewport,
-  screen: Size,
-  position: Point,
-  size: Size,
-  margin: number,
-): Viewport | null {
-  const shift = (start: number, length: number, screenLength: number) => {
-    const low = margin - start;
-    const high = screenLength - margin - (start + length);
-    if (low > 0) return low; // off the start: move right / down
-    if (high < 0) return Math.max(high, low); // off the end, but never past the start
-    return 0;
-  };
-  const { zoom } = viewport;
-  const dx = shift(position.x * zoom + viewport.x, size.width * zoom, screen.width);
-  const dy = shift(position.y * zoom + viewport.y, size.height * zoom, screen.height);
-  return dx === 0 && dy === 0 ? null : { x: viewport.x + dx, y: viewport.y + dy, zoom };
 }
 
 export interface Rect extends Point, Size {}
