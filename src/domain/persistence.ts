@@ -6,8 +6,8 @@ import type {
   TreeDoc,
   TreeEdge,
   TreeId,
+  TrashedTree,
   TreeNode,
-  TreeRoot,
   TreeState,
 } from "./types";
 import { PALETTE_COLORS } from "./types";
@@ -23,9 +23,11 @@ import { PALETTE_COLORS } from "./types";
 export const SCHEMA_VERSION = 2;
 
 /**
- * Version 1 had a single `rootId`; version 2 has `roots` (each with a board
- * position). `readTree` still reads version 1, turning its root into the
- * first entry of `roots` at the origin, so older saves open unchanged.
+ * Version 1 had a single `rootId`; version 2 has `roots` (and `trash`).
+ * `readTree` still reads version 1, turning its root into the only entry of
+ * `roots`, so older saves open unchanged. (Roots saved briefly as
+ * `{ id, x, y }` objects are read too; the position is ignored, since trees
+ * now line up side by side.)
  */
 export interface PersistedTree {
   readonly version: 2;
@@ -33,12 +35,12 @@ export interface PersistedTree {
 }
 
 export function serializeTree(doc: TreeDoc): PersistedTree {
-  const { roots, nodes, edges, childEdges, direction } = doc.state;
+  const { roots, trash, nodes, edges, childEdges, direction } = doc.state;
   // Copies out exactly the content fields, so nothing else that happens to
   // ride along on the object can leak into storage.
   return {
     version: SCHEMA_VERSION,
-    doc: { id: doc.id, name: doc.name, state: { roots, nodes, edges, childEdges, direction } },
+    doc: { id: doc.id, name: doc.name, state: { roots, trash, nodes, edges, childEdges, direction } },
   };
 }
 
@@ -97,21 +99,36 @@ export function readTree(data: unknown): TreeRead {
 
   // Roots: the saved ones that exist (once each), or version 1's single one.
   const rawRoots: unknown[] =
-    data.version === 1 ? [{ id: state.rootId, x: 0, y: 0 }] : Array.isArray(state.roots) ? state.roots : [];
-  const roots: TreeRoot[] = [];
+    data.version === 1 ? [state.rootId] : Array.isArray(state.roots) ? state.roots : [];
+  const roots: NodeId[] = [];
   for (const raw of rawRoots) {
-    const entry = isObject(raw) ? raw : null;
-    const id = entry?.id as NodeId | undefined;
-    if (!entry || !id || !nodes[id] || roots.some((root) => root.id === id)) {
+    const id = (isObject(raw) ? raw.id : raw) as NodeId;
+    if (typeof id !== "string" || !nodes[id] || roots.includes(id)) {
       fix(null);
       continue;
     }
-    const x = typeof entry.x === "number" && Number.isFinite(entry.x) ? entry.x : fix(0);
-    const y = typeof entry.y === "number" && Number.isFinite(entry.y) ? entry.y : fix(0);
-    roots.push({ id, x, y });
+    roots.push(id);
   }
   if (roots.length === 0) return { status: "unreadable" };
-  const rootIds = new Set(roots.map((root) => root.id));
+
+  // Trash: entries for nodes that exist and are not also on the board.
+  const rawTrash: unknown[] = Array.isArray(state.trash) ? state.trash : data.version === 1 ? [] : fix([]);
+  const trash: TrashedTree[] = [];
+  for (const raw of rawTrash) {
+    const rootId = isObject(raw) ? (raw.rootId as NodeId) : undefined;
+    if (
+      !rootId ||
+      !nodes[rootId] ||
+      roots.includes(rootId) ||
+      trash.some((entry) => entry.rootId === rootId)
+    ) {
+      fix(null);
+      continue;
+    }
+    const deletedAt = isObject(raw) && typeof raw.deletedAt === "number" ? raw.deletedAt : fix(0);
+    trash.push({ rootId, deletedAt });
+  }
+  const rootIds = new Set([...roots, ...trash.map((entry) => entry.rootId)]);
 
   // Edges: both ends must exist, never into a root, one parent per node.
   const rawEdges: Record<string, unknown> = isObject(state.edges) ? state.edges : fix({});
@@ -164,7 +181,7 @@ export function readTree(data: unknown): TreeRead {
     if (!placed.has(edge.id)) childEdges[fix(edge.source)].push(edge.id);
   }
 
-  // Drop whatever no root can reach.
+  // Drop whatever no root (or trashed root) can reach.
   const reachable = new Set<NodeId>();
   const stack = [...rootIds];
   let id: NodeId | undefined;
@@ -185,7 +202,7 @@ export function readTree(data: unknown): TreeRead {
     state.direction === "TB" || state.direction === "LR" ? state.direction : fix("TB");
   const name = typeof doc.name === "string" && doc.name ? doc.name : fix("Untitled tree");
 
-  const tree: TreeState = { roots, nodes, edges, childEdges, direction };
+  const tree: TreeState = { roots, trash, nodes, edges, childEdges, direction };
   const result: TreeDoc = { id: doc.id as TreeId, name, state: tree };
   return fixes === 0 ? { status: "ok", doc: result } : { status: "repaired", doc: result, fixes };
 }

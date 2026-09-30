@@ -4,6 +4,7 @@ import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
 import { ShortcutsDialog } from "../features/tree/ShortcutsDialog";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
+import { TrashPanel } from "../features/trash/TrashPanel";
 import { TreeSwitcher } from "../features/trees/TreeSwitcher";
 import { useTreeStore } from "../store/treeStore";
 import styles from "./App.module.css";
@@ -24,6 +25,7 @@ export function App() {
         <DirectionToggle />
         <AlignPanel />
         <div className={styles.spacer} />
+        <TrashPanel />
         <ExportMenu />
         <ShortcutsDialog />
       </header>

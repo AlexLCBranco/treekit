@@ -1,4 +1,5 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from "@xyflow/react";
+import { Trash2 } from "lucide-react";
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
@@ -27,6 +28,9 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   const node = useTreeStore((s) => s.tree.nodes[nodeId]);
   const isEditing = useTreeStore((s) => s.editingId === nodeId);
   const isRoot = useTreeStore((s) => isRootOf(s.tree, nodeId));
+  // A tree can go to the trash only while it is not the board's last one.
+  const canTrash = useTreeStore((s) => s.tree.roots.length > 1 && isRootOf(s.tree, nodeId));
+  const deleteBranch = useTreeStore((s) => s.deleteBranch);
   const direction = useTreeStore((s) => s.tree.direction);
   const childCount = useTreeStore((s) => s.tree.childEdges[nodeId]?.length ?? 0);
   const hidden = useTreeStore((s) =>
@@ -103,6 +107,22 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       >
         +
       </button>
+
+      {canTrash && (
+        <button
+          type="button"
+          className={`${styles.nodeButton} ${styles.trashTree} nodrag nopan`}
+          onClick={(event) => {
+            event.stopPropagation();
+            deleteBranch(nodeId);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          aria-label="Delete tree"
+          title="Delete tree (Del)"
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
 
       {childCount > 0 && (
         <button

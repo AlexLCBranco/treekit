@@ -24,8 +24,9 @@ import type { EdgeId, NodeId, TreeState } from "./types";
  *  3. Children are placed left-to-right in order, their block centred on
  *     the parent.
  *
- * A board can hold several roots. Each tree is laid out on its own, as if
- * its root sat at the origin, then shifted to where that root was put.
+ * A board can hold several roots. Each tree is laid out on its own, then
+ * the trees sit side by side along the breadth axis (in a row top-down, in
+ * a column left-right), all starting at the same depth, `treeGap` apart.
  *
  * Edge labels sit on the last straight stretch of their edge, just before
  * the child they describe. So each label counts twice: its depth widens the
@@ -48,6 +49,9 @@ export interface LayoutOptions {
   readonly nodeGap: number;
   /** Gap between one generation and the next, not counting labels. */
   readonly rankGap: number;
+  /** Gap between one tree and the next on the same board. Defaults to
+      three times `nodeGap`. */
+  readonly treeGap?: number;
   /** Used for a node that has not been measured yet. */
   readonly fallbackSize: Size;
 }
@@ -78,6 +82,7 @@ export function layoutTree(
   labelSizes: ReadonlyMap<EdgeId, Size> = new Map(),
 ): TreeLayout {
   const { nodeGap, rankGap, fallbackSize } = options;
+  const treeGap = options.treeGap ?? nodeGap * 3;
   const vertical = state.direction === "TB";
   const { nodeIds, edgeIds } = visibleSubtree(state);
   const visible = new Set(nodeIds);
@@ -103,7 +108,7 @@ export function layoutTree(
   const positions = new Map<NodeId, Point>();
   const routes = new Map<EdgeId, EdgeRoute>();
 
-  const layoutRoot = (rootId: NodeId, origin: Point) => {
+  const layoutRoot = (rootId: NodeId, slotStart: number): number => {
     // 1. Depth of every node, how deep each level is, and how deep the label
     // band in front of it is.
     const level = new Map<NodeId, number>();
@@ -155,12 +160,7 @@ export function layoutTree(
       // node stays close to its parent instead of floating mid-column.
       const slack = levelDepth[d] - depthSize(sizeOf(id));
       const across = levelStart[d] + (vertical ? slack / 2 : 0);
-      positions.set(
-        id,
-        vertical
-          ? { x: origin.x + along, y: origin.y + across }
-          : { x: origin.x + across, y: origin.y + along },
-      );
+      positions.set(id, vertical ? { x: along, y: across } : { x: across, y: along });
       nearSide.set(id, across);
 
       let cursor = center - childBlock.get(id)! / 2;
@@ -169,8 +169,7 @@ export function layoutTree(
         cursor += subtreeBreadth.get(child)! + nodeGap;
       }
     };
-    // Start so the root is centred on 0: stable as the tree grows sideways.
-    place(rootId, -subtreeBreadth.get(rootId)! / 2);
+    place(rootId, slotStart);
 
     // 4. Edge routes. The bend sits half a rank gap past the end of the
     // parent's level; the label is centred between the bend and the child's
@@ -187,9 +186,14 @@ export function layoutTree(
         labelBeforeTarget: nearSide.get(target)! - labelCenter,
       });
     }
+    return subtreeBreadth.get(rootId)!;
   };
 
-  for (const root of state.roots) layoutRoot(root.id, root);
+  let cursor = 0;
+  for (const rootId of state.roots) cursor += layoutRoot(rootId, cursor) + treeGap;
+  // Centre the whole row on 0, so it stays put as trees grow sideways.
+  const shift = (cursor - treeGap) / 2;
+  for (const [id, p] of positions) positions.set(id, vertical ? { x: p.x - shift, y: p.y } : { x: p.x, y: p.y - shift });
 
   return { positions, routes };
 }

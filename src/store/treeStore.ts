@@ -59,9 +59,9 @@ interface TreeStore {
   readonly editingEdgeId: EdgeId | null;
 
   addChild: (parentId: NodeId) => void;
-  /** Starts another tree on the same board, its root at this board point,
-      and opens it for naming. */
-  addRoot: (x: number, y: number) => void;
+  /** Starts another tree on the same board, at this position among the
+      trees, and opens its root for naming. */
+  addRoot: (index: number) => void;
   renameNode: (nodeId: NodeId, title: string) => void;
   /** Sets a node's palette colour; `null` clears it. */
   setNodeColor: (nodeId: NodeId, color: PaletteColor | null) => void;
@@ -70,9 +70,15 @@ interface TreeStore {
   toggleCollapsed: (nodeId: NodeId) => void;
   /** Sets an edge's label; an empty string removes it. */
   setEdgeLabel: (edgeId: EdgeId, label: string) => void;
-  /** Deletes the node and everything below it (a root takes its whole tree
-      off the board; the last root stays). */
+  /** Deletes the node and everything below it. A root sends its whole tree
+      to the trash instead (the last tree can't be deleted). */
   deleteBranch: (nodeId: NodeId) => void;
+  /** Puts a trashed tree back on the board and selects its root. */
+  restoreTree: (rootId: NodeId) => void;
+  /** Deletes one trashed tree for good. */
+  purgeTrashedTree: (rootId: NodeId) => void;
+  /** Deletes every trashed tree for good. */
+  emptyTrash: () => void;
   /** Deletes only the node; its children move up to its parent. */
   deleteNode: (nodeId: NodeId) => void;
   setDirection: (direction: LayoutDirection) => void;
@@ -200,9 +206,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return { ...commit(s, state), newNodeId: nodeId, selectedId: nodeId, editingId: nodeId };
     }),
 
-  addRoot: (x, y) =>
+  addRoot: (index) =>
     set((s) => {
-      const { state, nodeId } = tree.addRoot(s.tree, x, y);
+      const { state, nodeId } = tree.addRoot(s.tree, index);
       return { ...commit(s, state), newNodeId: nodeId, selectedId: nodeId, editingId: nodeId };
     }),
 
@@ -242,7 +248,9 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
   deleteBranch: (nodeId) =>
     set((s) => {
-      const next = tree.deleteBranch(s.tree, nodeId);
+      const next = tree.isRoot(s.tree, nodeId)
+        ? tree.trashTree(s.tree, nodeId, Date.now())
+        : tree.deleteBranch(s.tree, nodeId);
       if (next === s.tree) return s;
       return {
         ...commit(s, next),
@@ -250,6 +258,24 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         editingId: null,
         editingEdgeId: null,
       };
+    }),
+
+  restoreTree: (rootId) =>
+    set((s) => {
+      const next = tree.restoreTree(s.tree, rootId);
+      return next === s.tree ? s : { ...commit(s, next), selectedId: rootId, editingId: null, editingEdgeId: null };
+    }),
+
+  purgeTrashedTree: (rootId) =>
+    set((s) => {
+      const next = tree.purgeTrashedTree(s.tree, rootId);
+      return next === s.tree ? s : commit(s, next);
+    }),
+
+  emptyTrash: () =>
+    set((s) => {
+      const next = tree.emptyTrash(s.tree);
+      return next === s.tree ? s : commit(s, next);
     }),
 
   deleteNode: (nodeId) =>
@@ -322,7 +348,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
   deleteBranches: (nodeIds) =>
     set((s) => {
-      const next = tree.deleteBranches(s.tree, nodeIds);
+      const next = tree.deleteBranches(s.tree, nodeIds, Date.now());
       if (next === s.tree) return s;
       // Focus moves to whatever sat beside the first one, if it survived.
       const beside = nodeIds[0] ? tree.neighbourAfterDelete(s.tree, nodeIds[0]) : null;

@@ -232,17 +232,23 @@ function TreeCanvasInner() {
     });
   }, []);
 
-  // Double-clicking empty canvas starts another tree there, its first node
-  // centred under the pointer. Clicks that land on a node, a line, a button
-  // or the zoom pill are not on the pane, so they keep their own meaning.
+  // Double-clicking empty canvas starts another tree. Trees always sit side
+  // by side, so the click does not place it: it only decides where in the
+  // row it goes -- after every tree whose middle is before the click. Clicks
+  // on a node, a line, a button or the zoom pill are not on the pane, so
+  // they keep their own meaning.
   const onCanvasDoubleClick = (event: MouseEvent) => {
-    if (tool !== "select") return;
     if (!(event.target as HTMLElement).classList.contains("react-flow__pane")) return;
     const point = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    const { width, height } = TREE_LAYOUT.fallbackSize;
-    // A root's position is where its tree grows from: top-centre top-down,
-    // left-middle left-right. Nudge so the new node's middle is the click.
-    addRoot(...(tree.direction === "TB" ? [point.x, point.y - height / 2] : [point.x - width / 2, point.y]) as [number, number]);
+    const click = tree.direction === "TB" ? point.x : point.y;
+    const before = tree.roots.filter((id) => {
+      const p = targets.get(id);
+      if (!p) return false;
+      const size = sizes.get(id) ?? TREE_LAYOUT.fallbackSize;
+      const middle = tree.direction === "TB" ? p.x + size.width / 2 : p.y + size.height / 2;
+      return middle < click;
+    });
+    addRoot(before.length);
   };
 
   return (

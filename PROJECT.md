@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.18_
+_Last updated: 2026-09-30, v0.0.19_
 
 ## What it is
 
@@ -36,10 +36,15 @@ with Vitest tests.
   shortcuts (arrows, Tab, rename) work on the last one picked
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
 - Several trees on one board: double-click empty canvas to start another
-  tree, its first node centred where you clicked (and open for naming). Each
-  tree is laid out on its own from its root's position; deleting a root
-  removes that whole tree (the last one can't be deleted); arrows walk within
-  a tree, not between trees
+  tree (open for naming). Trees always sit side by side (in a row top-down,
+  a column left-right) from the same start line, and the Align panel places
+  the whole row; the click only decides where in the row the new tree goes.
+  Arrows walk within a tree, not between trees
+- Trash, like Boardkit's: a root's trash button (or Delete on a root) sends
+  its whole tree to the header's trash; there you can restore it (to the end
+  of the row), delete it for good, or empty the trash. It keeps the last 10
+  trees and is saved with the board and undoable. The last tree on a board
+  can't be deleted. Other nodes are still deleted straight away (undo)
 - A root node on a pan/zoom canvas with a dot grid and zoom controls; the mouse wheel scrolls the canvas, Ctrl+wheel or the zoom pill (− 100% +; click the % to reset) zoom
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
 - Add a child: the "+" on a node, or select it and press Tab
@@ -94,8 +99,7 @@ The MVP list is done. Ideas, not yet ordered:
 - Mermaid subgraphs, and nodes with two parents (needs a graph layout)
 - Import Mermaid with several starting points as several trees on one board
   (export already writes every tree; import still refuses more than one)
-- Drag a root to move its tree; stop trees overlapping when the user places
-  one on top of another
+- Drag trees to reorder them in the row
 - A visible notice for repaired saves (see open problems)
 
 ## Open problems

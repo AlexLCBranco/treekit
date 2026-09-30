@@ -53,20 +53,22 @@ export interface TreeEdge {
 export type LayoutDirection = "TB" | "LR";
 
 /**
- * A starting node and where it sits on the board: the point its tree grows
- * from (top-down: the root's top-centre; left-right: its left-middle).
- * A board can hold several roots; the first one is where every board starts.
+ * A whole tree taken off the board. Its nodes and edges stay in the normal
+ * maps (so restoring is just putting the root back in `roots`); it is
+ * only unreachable from `roots`, so nothing draws or lays it out.
  */
-export interface TreeRoot {
-  readonly id: NodeId;
-  readonly x: number;
-  readonly y: number;
+export interface TrashedTree {
+  readonly rootId: NodeId;
+  /** Milliseconds since the epoch; given by the caller so the domain stays pure. */
+  readonly deletedAt: number;
 }
 
 /** One whole board: everything that is saved and undone together. */
 export interface TreeState {
-  /** In creation order; never empty. */
-  readonly roots: readonly TreeRoot[];
+  /** The board's trees, side by side in this order; never empty. */
+  readonly roots: readonly NodeId[];
+  /** Deleted trees, oldest first, until restored or emptied. */
+  readonly trash: readonly TrashedTree[];
   readonly nodes: Readonly<Record<NodeId, TreeNode>>;
   readonly edges: Readonly<Record<EdgeId, TreeEdge>>;
   /** Outgoing edges of each node, in sibling order. */

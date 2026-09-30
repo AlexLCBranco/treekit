@@ -41,7 +41,7 @@ const GROUPS: readonly Group[] = [
       { description: "Collapse or expand its branch", combos: [["Space"]] },
       { description: "Colour it (in the palette's order)", combos: [["1–8"]] },
       { description: "Clear its colour", combos: [["0"]] },
-      { description: "Delete it and its branch", combos: [["Del"], ["Backspace"]] },
+      { description: "Delete it and its branch (a whole tree goes to the trash)", combos: [["Del"], ["Backspace"]] },
       { description: "Delete only it; its children move up", combos: [["Shift", "Del"]] },
       { description: "Clear the selection", combos: [["Esc"]] },
     ],
@@ -58,7 +58,7 @@ const GROUPS: readonly Group[] = [
     rows: [
       { description: "Select a node", combos: [["Click"]] },
       { description: "Rename a node, or label a line", combos: [["Double-click"]] },
-      { description: "Start another tree, on empty canvas", combos: [["Double-click"]] },
+      { description: "Start another tree, on empty canvas (it joins the row)", combos: [["Double-click"]] },
       { description: "Collapse or expand a branch", combos: [["Click −"], ["Click the count"]] },
       { description: "Colour or collapse a node", combos: [["Right-click"]] },
       { description: "Select several nodes (select cursor)", combos: [["Drag"]] },

@@ -7,7 +7,7 @@ import type { NodeId } from "./types";
 describe("history", () => {
   it("undoes and redoes a step, restoring the exact slices", () => {
     const t0 = createTree("root");
-    const t1 = renameNode(t0, t0.roots[0].id, "renamed");
+    const t1 = renameNode(t0, t0.roots[0], "renamed");
     const h1 = record(EMPTY_HISTORY, t0, t1);
 
     const back = undo(h1, t1)!;
@@ -18,7 +18,7 @@ describe("history", () => {
 
   it("stores only the slices that changed", () => {
     const t0 = createTree();
-    const t1 = renameNode(t0, t0.roots[0].id, "x");
+    const t1 = renameNode(t0, t0.roots[0], "x");
     const entry = record(EMPTY_HISTORY, t0, t1).past[0];
     expect(Object.keys(entry.after)).toEqual(["nodes"]);
   });
@@ -27,16 +27,16 @@ describe("history", () => {
     const t0 = createTree();
     expect(record(EMPTY_HISTORY, t0, t0)).toBe(EMPTY_HISTORY);
 
-    const t1 = renameNode(t0, t0.roots[0].id, "a");
+    const t1 = renameNode(t0, t0.roots[0], "a");
     const undone = undo(record(EMPTY_HISTORY, t0, t1), t1)!;
     expect(undone.history.future).toHaveLength(1);
-    const t2 = renameNode(undone.state, t0.roots[0].id, "b");
+    const t2 = renameNode(undone.state, t0.roots[0], "b");
     expect(record(undone.history, undone.state, t2).future).toHaveLength(0);
   });
 
   it("folds add-then-name into one undo step", () => {
     const t0 = createTree();
-    const added = addChild(t0, t0.roots[0].id);
+    const added = addChild(t0, t0.roots[0]);
     const t1 = added.state;
     const t2 = renameNode(t1, added.nodeId as NodeId, "named");
     const h = amendLast(record(EMPTY_HISTORY, t0, t1), t1, t2);

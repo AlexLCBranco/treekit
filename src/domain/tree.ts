@@ -1,5 +1,13 @@
 import { createEdgeId, createNodeId } from "./ids";
-import type { EdgeId, LayoutDirection, NodeId, PaletteColor, TreeEdge, TreeNode, TreeState } from "./types";
+import type {
+  EdgeId,
+  LayoutDirection,
+  NodeId,
+  PaletteColor,
+  TreeEdge,
+  TreeNode,
+  TreeState,
+} from "./types";
 
 /**
  * Pure tree operations. Each takes a `TreeState` and returns a new one,
@@ -16,7 +24,8 @@ function makeNode(title: string): TreeNode {
 export function createTree(rootTitle = "Decision", direction: LayoutDirection = "TB"): TreeState {
   const root = makeNode(rootTitle);
   return {
-    roots: [{ id: root.id, x: 0, y: 0 }],
+    roots: [root.id],
+    trash: [],
     nodes: { [root.id]: root },
     edges: {},
     childEdges: { [root.id]: [] },
@@ -60,16 +69,18 @@ export function addChild(
 }
 
 /**
- * Starts another tree on the same board, with its root at (`x`, `y`).
- * Returns the new root's id (the UI selects it and opens it for naming).
+ * Starts another tree on the same board, at position `index` among the
+ * roots (clamped to the ends). Returns the new root's id (the UI selects it
+ * and opens it for naming).
  */
-export function addRoot(state: TreeState, x: number, y: number, title = ""): { state: TreeState; nodeId: NodeId } {
+export function addRoot(state: TreeState, index: number, title = ""): { state: TreeState; nodeId: NodeId } {
   const root = makeNode(title);
+  const at = Math.max(0, Math.min(index, state.roots.length));
   return {
     nodeId: root.id,
     state: {
       ...state,
-      roots: [...state.roots, { id: root.id, x, y }],
+      roots: [...state.roots.slice(0, at), root.id, ...state.roots.slice(at)],
       nodes: { ...state.nodes, [root.id]: root },
       childEdges: { ...state.childEdges, [root.id]: [] },
     },
@@ -78,7 +89,7 @@ export function addRoot(state: TreeState, x: number, y: number, title = ""): { s
 
 /** Whether `nodeId` starts one of the board's trees. */
 export function isRoot(state: TreeState, nodeId: NodeId): boolean {
-  return state.roots.some((root) => root.id === nodeId);
+  return state.roots.includes(nodeId);
 }
 
 export function renameNode(state: TreeState, nodeId: NodeId, title: string): TreeState {
@@ -172,27 +183,14 @@ function omit<K extends string, V>(record: Readonly<Record<K, V>>, keys: Iterabl
 }
 
 /**
- * Deletes a node and its whole branch. Deleting a root removes that whole
- * tree from the board -- except the last one: a board always keeps one root
- * (deleting everything else is "delete each child").
+ * Deletes a node and its whole branch. A root cannot be deleted this way:
+ * a whole tree goes to the trash instead (`trashTree`).
  */
 export function deleteBranch(state: TreeState, nodeId: NodeId): TreeState {
-  if (!state.nodes[nodeId]) return state;
-  const removedNodes = subtreeIds(state, nodeId);
   const incoming = parentEdgeOf(state, nodeId);
+  if (!incoming || !state.nodes[nodeId]) return state;
 
-  if (!incoming) {
-    if (!isRoot(state, nodeId) || state.roots.length === 1) return state;
-    const removedEdges = removedNodes.flatMap((id) => state.childEdges[id] ?? []);
-    return {
-      ...state,
-      roots: state.roots.filter((root) => root.id !== nodeId),
-      nodes: omit(state.nodes, removedNodes),
-      edges: omit(state.edges, removedEdges),
-      childEdges: omit(state.childEdges, removedNodes),
-    };
-  }
-
+  const removedNodes = subtreeIds(state, nodeId);
   const removedEdges = [incoming.id, ...removedNodes.flatMap((id) => state.childEdges[id] ?? [])];
   return {
     ...state,
@@ -240,8 +238,8 @@ export function neighbourAfterDelete(state: TreeState, nodeId: NodeId): NodeId |
   const incoming = parentEdgeOf(state, nodeId);
   if (!incoming) {
     // A root: the next root along the board, else the previous one.
-    const index = state.roots.findIndex((root) => root.id === nodeId);
-    return (state.roots[index + 1] ?? state.roots[index - 1])?.id ?? null;
+    const index = state.roots.indexOf(nodeId);
+    return state.roots[index + 1] ?? state.roots[index - 1] ?? null;
   }
   const siblings = state.childEdges[incoming.source];
   const index = siblings.indexOf(incoming.id);
@@ -274,8 +272,9 @@ export function cloneTree(state: TreeState): TreeState {
   for (const [id, list] of Object.entries(state.childEdges) as [NodeId, readonly EdgeId[]][]) {
     childEdges[nodeIds.get(id)!] = list.map((e) => edgeIds.get(e)!);
   }
-  const roots = state.roots.map((root) => ({ ...root, id: nodeIds.get(root.id)! }));
-  return { roots, nodes, edges, childEdges, direction: state.direction };
+  const roots = state.roots.map((id) => nodeIds.get(id)!);
+  const trash = state.trash.map((entry) => ({ ...entry, rootId: nodeIds.get(entry.rootId)! }));
+  return { roots, trash, nodes, edges, childEdges, direction: state.direction };
 }
 
 /** Child node ids of `nodeId`, in sibling order. */
@@ -292,7 +291,7 @@ export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
 export function visibleSubtree(state: TreeState): { nodeIds: NodeId[]; edgeIds: EdgeId[] } {
   const nodeIds: NodeId[] = [];
   const edgeIds: EdgeId[] = [];
-  const stack: NodeId[] = state.roots.map((root) => root.id).reverse();
+  const stack: NodeId[] = [...state.roots].reverse();
   let id: NodeId | undefined;
   while ((id = stack.pop()) !== undefined) {
     const node = state.nodes[id];
@@ -308,9 +307,13 @@ export function visibleSubtree(state: TreeState): { nodeIds: NodeId[]; edgeIds: 
 }
 
 /** Deletes several branches as one edit. A node already gone with an
-    ancestor's branch is skipped; the last root still stays. */
-export function deleteBranches(state: TreeState, nodeIds: readonly NodeId[]): TreeState {
-  return nodeIds.reduce(deleteBranch, state);
+    ancestor's branch is skipped. A root sends its tree to the trash (stamped
+    `deletedAt`; without one, roots are left alone); the last tree stays. */
+export function deleteBranches(state: TreeState, nodeIds: readonly NodeId[], deletedAt?: number): TreeState {
+  return nodeIds.reduce((acc, id) => {
+    if (!isRoot(acc, id)) return deleteBranch(acc, id);
+    return deletedAt === undefined ? acc : trashTree(acc, id, deletedAt);
+  }, state);
 }
 
 /** Sets the same colour on several nodes; `null` clears it. */
@@ -320,4 +323,65 @@ export function setNodesColor(
   color: PaletteColor | null,
 ): TreeState {
   return nodeIds.reduce((s, id) => setNodeColor(s, id, color), state);
+}
+
+// ------------------------------------------------------------------ trash
+
+/** How many deleted trees the trash keeps; the oldest is forgotten first.
+    A cap, not a timer: "recently deleted" needs a bound, no more. */
+export const TRASH_LIMIT = 10;
+
+/** Removes a tree's nodes and edges for good. */
+function purgeTree(state: TreeState, rootId: NodeId): TreeState {
+  const removedNodes = subtreeIds(state, rootId);
+  const removedEdges = removedNodes.flatMap((id) => state.childEdges[id] ?? []);
+  return {
+    ...state,
+    nodes: omit(state.nodes, removedNodes),
+    edges: omit(state.edges, removedEdges),
+    childEdges: omit(state.childEdges, removedNodes),
+  };
+}
+
+/**
+ * Takes a whole tree off the board and into the trash. Refused for the last
+ * tree: a board always keeps one. Past `TRASH_LIMIT` the oldest trashed
+ * tree is deleted for good.
+ */
+export function trashTree(state: TreeState, rootId: NodeId, deletedAt: number): TreeState {
+  if (!isRoot(state, rootId) || state.roots.length === 1) return state;
+  let next: TreeState = {
+    ...state,
+    roots: state.roots.filter((id) => id !== rootId),
+    trash: [...state.trash, { rootId, deletedAt }],
+  };
+  while (next.trash.length > TRASH_LIMIT) {
+    const [oldest, ...rest] = next.trash;
+    next = purgeTree({ ...next, trash: rest }, oldest.rootId);
+  }
+  return next;
+}
+
+/** Puts a trashed tree back on the board, after the other trees. */
+export function restoreTree(state: TreeState, rootId: NodeId): TreeState {
+  if (!state.trash.some((entry) => entry.rootId === rootId)) return state;
+  return {
+    ...state,
+    roots: [...state.roots, rootId],
+    trash: state.trash.filter((entry) => entry.rootId !== rootId),
+  };
+}
+
+/** Deletes one trashed tree for good. */
+export function purgeTrashedTree(state: TreeState, rootId: NodeId): TreeState {
+  if (!state.trash.some((entry) => entry.rootId === rootId)) return state;
+  return purgeTree({ ...state, trash: state.trash.filter((entry) => entry.rootId !== rootId) }, rootId);
+}
+
+/** Deletes every trashed tree for good. */
+export function emptyTrash(state: TreeState): TreeState {
+  if (state.trash.length === 0) return state;
+  let next: TreeState = { ...state, trash: [] };
+  for (const entry of state.trash) next = purgeTree(next, entry.rootId);
+  return next;
 }

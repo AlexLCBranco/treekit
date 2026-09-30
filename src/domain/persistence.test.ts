@@ -6,8 +6,8 @@ import type { NodeId, TreeDoc, TreeId } from "./types";
 
 function sampleDoc(): { doc: TreeDoc; a: NodeId; b: NodeId } {
   const t0 = createTree("root");
-  const a = addChild(t0, t0.roots[0].id, "a");
-  const b = addChild(a.state, t0.roots[0].id, "b");
+  const a = addChild(t0, t0.roots[0], "a");
+  const b = addChild(a.state, t0.roots[0], "b");
   return {
     doc: { id: "t1" as TreeId, name: "My tree", state: b.state },
     a: a.nodeId!,
@@ -30,14 +30,14 @@ describe("readTree", () => {
     expect(readTree({ version: 3, doc: {} }).status).toBe("unreadable");
     const { doc } = sampleDoc();
     const noRoot = roundTrip(serializeTree(doc));
-    noRoot.doc.state.roots[0].id = "missing";
+    noRoot.doc.state.roots[0] = "missing";
     expect(readTree(noRoot).status).toBe("unreadable");
   });
 
   it("repairs bad fields, dangling edges and forgotten child order", () => {
     const { doc, a, b } = sampleDoc();
     const data = roundTrip(serializeTree(doc));
-    const root = doc.state.roots[0].id;
+    const root = doc.state.roots[0];
     data.doc.state.nodes[a].title = 42;
     data.doc.state.nodes[a].color = "neon";
     data.doc.state.edges.bad = { id: "bad", source: root, target: "ghost", label: "" };
@@ -56,7 +56,7 @@ describe("readTree", () => {
   it("drops nodes the root can no longer reach", () => {
     const { doc, a } = sampleDoc();
     const data = roundTrip(serializeTree(doc));
-    const edgeToA = doc.state.childEdges[doc.state.roots[0].id][0];
+    const edgeToA = doc.state.childEdges[doc.state.roots[0]][0];
     delete data.doc.state.edges[edgeToA];
 
     const read = readTree(data);

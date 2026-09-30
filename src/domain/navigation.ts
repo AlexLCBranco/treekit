@@ -81,7 +81,7 @@ export function moveFrom(
 function rowOf(state: TreeState, nodeId: NodeId): NodeId[] {
   const depth = new Map<NodeId, number>();
   const rootOf = new Map<NodeId, NodeId>();
-  for (const { id } of state.roots) {
+  for (const id of state.roots) {
     depth.set(id, 0);
     rootOf.set(id, id);
   }

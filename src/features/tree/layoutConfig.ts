@@ -8,6 +8,8 @@ import type { LayoutOptions } from "../../domain/layout";
 export const TREE_LAYOUT: LayoutOptions = {
   nodeGap: 32,
   rankGap: 64,
+  /** Between the trees of one board. */
+  treeGap: 96,
   fallbackSize: { width: 120, height: 44 },
 };
 

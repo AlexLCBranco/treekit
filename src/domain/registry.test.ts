@@ -33,7 +33,7 @@ describe("registry", () => {
 describe("cloneTree", () => {
   it("copies structure and content with entirely fresh ids", () => {
     const t0 = createTree("root", "LR");
-    const child = addChild(t0, t0.roots[0].id, "child");
+    const child = addChild(t0, t0.roots[0], "child");
     const original = addChild(child.state, child.nodeId!, "grandchild").state;
     const copy = cloneTree(original);
 
@@ -42,7 +42,7 @@ describe("cloneTree", () => {
       expect(originalIds.has(id)).toBe(false);
     }
     expect(copy.direction).toBe("LR");
-    const [copiedChild] = childrenOf(copy, copy.roots[0].id);
+    const [copiedChild] = childrenOf(copy, copy.roots[0]);
     expect(copy.nodes[copiedChild].title).toBe("child");
     expect(copy.nodes[childrenOf(copy, copiedChild)[0]].title).toBe("grandchild");
   });

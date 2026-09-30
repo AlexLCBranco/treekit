@@ -89,7 +89,7 @@ export function useTreeShortcuts() {
       if (event.key.startsWith("Arrow") && !event.shiftKey) {
         // Also stops the page scrolling.
         event.preventDefault();
-        if (!selectedId) return store.select(store.tree.roots[0].id);
+        if (!selectedId) return store.select(store.tree.roots[0]);
         const move = arrowToMove(event.key as ArrowKey, store.tree.direction);
         const target = moveFrom(store.tree, selectedId, move, lastChild.get(selectedId));
         if (target) store.select(target);

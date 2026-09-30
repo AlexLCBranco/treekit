@@ -57,7 +57,7 @@ export function toMermaid(state: TreeState): string {
   // Short ids in reading order (depth-first, siblings in order, one root after the other).
   const ids = new Map<NodeId, string>();
   const order: NodeId[] = [];
-  const stack: NodeId[] = state.roots.map((root) => root.id).reverse();
+  const stack: NodeId[] = [...state.roots].reverse();
   let id: NodeId | undefined;
   while ((id = stack.pop()) !== undefined) {
     if (!state.nodes[id]) continue;
@@ -337,5 +337,5 @@ function parse(text: string): TreeState {
     const lost = [...draft.titles.keys()].find((id) => !nodeIds.has(id))!;
     throw new ImportError(`${name(lost)} is part of a loop that never connects to the start; a tree can't loop.`);
   }
-  return { roots: [{ id: rootId, x: 0, y: 0 }], ...state, direction };
+  return { roots: [rootId], trash: [], ...state, direction };
 }
