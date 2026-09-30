@@ -268,3 +268,46 @@ describe("layout with edge labels", () => {
     expect(pos.get(withLabel.b)!.x).toBe(base.get(plain.b)!.x + 60);
   });
 });
+
+describe("layout alignment", () => {
+  const options = { nodeGap: 20, rankGap: 40, fallbackSize: { width: 100, height: 40 } };
+  // root with two children a, b (all 100 wide): children block is 220 wide.
+  const build = () => {
+    const tree = createTree();
+    const a = add(tree, tree.rootId);
+    const b = add(a.state, tree.rootId);
+    return { tree: b.state, a: a.id, b: b.id };
+  };
+  const at = (align: { x: "start" | "center" | "end" | null; y: "start" | "center" | "end" | null }, sizes = new Map<NodeId, Size>()) => {
+    const { tree, a, b } = build();
+    const pos = layoutTree(tree, sizes, { ...options, align }).positions;
+    return { root: pos.get(tree.rootId)!, a: pos.get(a)!, b: pos.get(b)! };
+  };
+
+  it("defaults to the parent centred over its children", () => {
+    const { root, a, b } = at({ x: null, y: null });
+    expect(root.x + 50).toBe((a.x + b.x + 100) / 2);
+  });
+
+  it("left: the parent starts where its children start", () => {
+    const { root, a } = at({ x: "start", y: null });
+    expect(root.x).toBe(a.x);
+  });
+
+  it("right: the parent ends where its children end", () => {
+    const { root, b } = at({ x: "end", y: null });
+    expect(root.x + 100).toBe(b.x + 100);
+  });
+
+  it("top / bottom: a short node sits at the start or end of its row", () => {
+    const { tree, a, b } = build();
+    const sizes = new Map<NodeId, Size>([
+      [a, { width: 100, height: 100 }],
+      [b, { width: 100, height: 40 }],
+    ]);
+    const top = layoutTree(tree, sizes, { ...options, align: { x: null, y: "start" } }).positions;
+    expect(top.get(b)!.y).toBe(top.get(a)!.y);
+    const bottom = layoutTree(tree, sizes, { ...options, align: { x: null, y: "end" } }).positions;
+    expect(bottom.get(b)!.y + 40).toBe(bottom.get(a)!.y + 100);
+  });
+});

@@ -1,31 +1,33 @@
 import { create } from "zustand";
 
-/** Where the camera puts the tree: centred on the page, or its top-left
-    corner in the page's top-left. */
-export type Alignment = "center" | "start";
+import type { Align, Alignment } from "../domain/layout";
 
-const KEY = "treekit:alignment";
+const KEY = "treekit:align";
+
+const isAlign = (v: unknown): v is Align => v === "start" || v === "center" || v === "end";
 
 function load(): Alignment {
   try {
-    return localStorage.getItem(KEY) === "start" ? "start" : "center";
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Record<string, unknown>;
+    return { x: isAlign(raw.x) ? raw.x : null, y: isAlign(raw.y) ? raw.y : null };
   } catch {
-    return "center";
+    return { x: null, y: null };
   }
 }
 
 /**
- * View preferences: how you look at trees, not part of any tree, so they
- * are not saved with a tree or put on the undo stack.
+ * View preferences: how trees are laid out on the page, not part of any
+ * tree, so they are not saved with a tree or put on the undo stack.
  */
 export const useViewStore = create<{
   alignment: Alignment;
-  setAlignment: (alignment: Alignment) => void;
-}>()((set) => ({
+  setAlign: (axis: "x" | "y", value: Align) => void;
+}>()((set, get) => ({
   alignment: load(),
-  setAlignment: (alignment) => {
+  setAlign: (axis, value) => {
+    const alignment = { ...get().alignment, [axis]: value };
     try {
-      localStorage.setItem(KEY, alignment);
+      localStorage.setItem(KEY, JSON.stringify(alignment));
     } catch {
       // Storage full or blocked: the choice still applies for this visit.
     }

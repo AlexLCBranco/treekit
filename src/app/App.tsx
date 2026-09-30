@@ -1,5 +1,5 @@
 import { ExportMenu } from "../features/export/ExportMenu";
-import { AlignmentToggle } from "../features/tree/AlignmentToggle";
+import { AlignPanel } from "../features/tree/AlignPanel";
 import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
 import { ShortcutsDialog } from "../features/tree/ShortcutsDialog";
@@ -22,7 +22,7 @@ export function App() {
         <TreeSwitcher />
         <HistoryButtons />
         <DirectionToggle />
-        <AlignmentToggle />
+        <AlignPanel />
         <div className={styles.spacer} />
         <ExportMenu />
         <ShortcutsDialog />

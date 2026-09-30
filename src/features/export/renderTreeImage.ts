@@ -6,6 +6,7 @@ import { layoutTree, type Size } from "../../domain/layout";
 import { expandAll, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId, TreeState } from "../../domain/types";
 import { TREE_LAYOUT } from "../tree/layoutConfig";
+import { useViewStore } from "../../store/viewStore";
 import edgeStyles from "../tree/TreeEdgeView.module.css";
 import nodeStyles from "../tree/TreeNodeView.module.css";
 
@@ -75,7 +76,7 @@ export async function renderTreeImage(tree: TreeState, format: ImageFormat): Pro
     for (const [id, el] of labelEls) labelSizes.set(id, { width: el.offsetWidth, height: el.offsetHeight });
 
     // 2. The same layout the canvas uses, then the bounding box of the result.
-    const { positions, routes } = layoutTree(full, sizes, TREE_LAYOUT, labelSizes);
+    const { positions, routes } = layoutTree(full, sizes, { ...TREE_LAYOUT, align: useViewStore.getState().alignment }, labelSizes);
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
