@@ -1,0 +1,45 @@
+.panel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.button,
+.value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.button {
+  width: 28px;
+}
+
+.value {
+  min-width: 52px;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.button:hover:not(:disabled),
+.value:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

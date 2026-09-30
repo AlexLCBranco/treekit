@@ -1,7 +1,6 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -24,6 +23,7 @@ import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
 import { TreeNodeView, type TreeFlowNode } from "./TreeNodeView";
 import { useAnimatedPositions } from "./useAnimatedPositions";
 import { useTreeShortcuts } from "./useTreeShortcuts";
+import { ZoomControls } from "./ZoomControls";
 
 // Defined once at module level: React Flow warns (and re-mounts every
 // node) if this object changes identity between renders.
@@ -242,7 +242,7 @@ function TreeCanvasInner() {
           attributionPosition="top-right"
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
-          <Controls showInteractive={false} position="bottom-left" />
+          <ZoomControls />
         </ReactFlow>
       </div>
     </NodeContextMenu>
