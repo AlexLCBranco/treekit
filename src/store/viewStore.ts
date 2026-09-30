@@ -8,6 +8,9 @@ export interface PageAlignment {
   readonly y: Align;
 }
 
+/** The active cursor tool, as in Excalidraw's presentation mode. */
+export type Tool = "select" | "hand" | "laser";
+
 const KEY = "treekit:align";
 
 const isAlign = (v: unknown): v is Align => v === "start" || v === "center" || v === "end";
@@ -29,10 +32,15 @@ function load(): PageAlignment {
 export const useViewStore = create<{
   alignment: PageAlignment;
   applied: number;
+  /** Session-only: a tool left on by accident should not survive a reload. */
+  tool: Tool;
+  setTool: (tool: Tool) => void;
   setAlign: (axis: "x" | "y", value: Align) => void;
 }>()((set, get) => ({
   alignment: load(),
   applied: 0,
+  tool: "select",
+  setTool: (tool) => set({ tool }),
   setAlign: (axis, value) => {
     const alignment = { ...get().alignment, [axis]: value };
     try {

@@ -4,6 +4,7 @@ import { arrowToMove, moveFrom, type ArrowKey } from "../../domain/navigation";
 import { parentEdgeOf } from "../../domain/tree";
 import { PALETTE_COLORS, type NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
+import { useViewStore, type Tool } from "../../store/viewStore";
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -36,8 +37,9 @@ function onCanvas(target: EventTarget | null): boolean {
  *
  *   Ctrl/Cmd+Z                 undo
  *   Ctrl/Cmd+Shift+Z, Ctrl+Y   redo
+ *   V, H, K                    select / hand / laser cursor
  * On the selected node:
- *   Arrows                     move to the parent, a child, or along the
+ *   Arrows                    move to the parent, a child, or along the
  *                              row (any arrow selects the first root if nothing is)
  *   Tab                       add a child (and start naming it)
  *   Enter, F2                  rename
@@ -92,6 +94,12 @@ export function useTreeShortcuts() {
         const target = moveFrom(store.tree, selectedId, move, lastChild.get(selectedId));
         if (target) store.select(target);
         return;
+      }
+
+      if (!event.shiftKey) {
+        const tools: Record<string, Tool> = { v: "select", h: "hand", k: "laser" };
+        const tool = tools[key];
+        if (tool) return useViewStore.getState().setTool(tool);
       }
 
       if (!selectedId) return;

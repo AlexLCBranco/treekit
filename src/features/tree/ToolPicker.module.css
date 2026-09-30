@@ -1,0 +1,32 @@
+.panel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.tool {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.tool[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--text-inverted);
+}

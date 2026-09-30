@@ -23,6 +23,8 @@ import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
 import { TreeNodeView, type TreeFlowNode } from "./TreeNodeView";
 import { useAnimatedPositions } from "./useAnimatedPositions";
 import { useTreeShortcuts } from "./useTreeShortcuts";
+import { LaserTrail } from "./LaserTrail";
+import { ToolPicker } from "./ToolPicker";
 import { ZoomControls } from "./ZoomControls";
 
 // Defined once at module level: React Flow warns (and re-mounts every
@@ -47,6 +49,7 @@ function TreeCanvasInner() {
   const select = useTreeStore((s) => s.select);
   const addRoot = useTreeStore((s) => s.addRoot);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
+  const tool = useViewStore((s) => s.tool);
   const { getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   // React Flow's own store, read (not subscribed to) for the pane's size.
   const flowStore = useStoreApi();
@@ -214,6 +217,7 @@ function TreeCanvasInner() {
   // centred under the pointer. Clicks that land on a node, a line, a button
   // or the zoom pill are not on the pane, so they keep their own meaning.
   const onCanvasDoubleClick = (event: MouseEvent) => {
+    if (tool !== "select") return;
     if (!(event.target as HTMLElement).classList.contains("react-flow__pane")) return;
     const point = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     const { width, height } = TREE_LAYOUT.fallbackSize;
@@ -224,7 +228,7 @@ function TreeCanvasInner() {
 
   return (
     <NodeContextMenu>
-      <div className={styles.canvas}>
+      <div className={styles.canvas} data-tool={tool}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -236,6 +240,8 @@ function TreeCanvasInner() {
           onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
           onPaneClick={() => select(null)}
           onDoubleClick={onCanvasDoubleClick}
+          // The laser owns the drag; select and hand pan with it.
+          panOnDrag={tool !== "laser"}
           nodesConnectable={false}
           nodesDraggable={false}
           // Double-click renames a node; zooming on it would fight that.
@@ -257,6 +263,8 @@ function TreeCanvasInner() {
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
           <ZoomControls />
+          <ToolPicker />
+          {tool === "laser" && <LaserTrail />}
         </ReactFlow>
       </div>
     </NodeContextMenu>
