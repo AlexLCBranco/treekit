@@ -8,7 +8,8 @@ A browser app for building decision / consequence trees visually: click and
 type instead of writing Mermaid. A sandbox for trying "what if" branches,
 then keeping or discarding them. One "stone" of the future "gauntlet"
 canvas; sibling of Boardkit (github.com/AlexLCBranco/boardkit), whose stack,
-structure and look it mirrors. Out of scope for now: accounts, backend,
+structure and look it mirrors. Repo: github.com/AlexLCBranco/treekit;
+every push to main deploys on Vercel. Out of scope for now: accounts, backend,
 cloud sync, collaboration, AI, mobile.
 
 ## Stack
@@ -41,11 +42,9 @@ Rest of the MVP, roughly in this order:
 - Collapse/expand a branch (model and layout support it; needs a button)
 - Keyboard navigation between nodes; pan to a new node if it lands off-screen
 - Export PNG/SVG; Mermaid flowchart import/export
-- Git repo on GitHub + Vercel deploy on push to main
 
 ## Open problems
 
-- Not in git yet and not deployed
 - Mermaid graphs where a node has two parents won't fit the tree model as
   is; the model allows it later (edges are separate records), but the
   layout would need a graph algorithm (dagre/elk) for those
