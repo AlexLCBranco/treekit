@@ -1,0 +1,23 @@
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.trigger:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* A short confirmation ("Mermaid copied") beside the button. */
+.notice {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}

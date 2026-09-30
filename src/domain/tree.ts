@@ -91,6 +91,17 @@ export function setCollapsed(state: TreeState, nodeId: NodeId, collapsed: boolea
   return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, collapsed } } };
 }
 
+/**
+ * The same tree with every branch unfolded. Not an edit: used to draw or
+ * export the whole tree without touching what is saved.
+ */
+export function expandAll(state: TreeState): TreeState {
+  if (Object.values(state.nodes).every((node) => !node.collapsed)) return state;
+  const nodes: Record<NodeId, TreeNode> = {};
+  for (const node of Object.values(state.nodes)) nodes[node.id] = node.collapsed ? { ...node, collapsed: false } : node;
+  return { ...state, nodes };
+}
+
 /** How many nodes a collapsed node hides: everything below it. */
 export function hiddenCount(state: TreeState, nodeId: NodeId): number {
   return state.nodes[nodeId] ? subtreeIds(state, nodeId).length - 1 : 0;

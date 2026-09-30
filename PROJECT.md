@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.8_
+_Last updated: 2026-09-29, v0.0.9_
 
 ## What it is
 
@@ -18,10 +18,10 @@ Vite, React 19, TypeScript (strict), Zustand, React Flow (`@xyflow/react`)
 as the pan/zoom canvas, a small hand-written tidy-tree layout (no layout
 library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
-icons. No backend: saved in the browser's localStorage. Layers:
+icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
 TypeScript (tree model and operations, layout, keyboard navigation, undo history,
-save format)
+save format, Mermaid import/export)
 with Vitest tests.
 
 ## What works now
@@ -64,11 +64,20 @@ with Vitest tests.
   (with a confirm); each tree keeps its own undo history for the session
 - A keyboard button in the header (or press ?) opens a list of every
   shortcut and mouse gesture, like Boardkit's
+- Export and import (the download button in the header): PNG or SVG of the
+  whole tree (folded branches unfolded, no buttons or selection, in the
+  current light/dark theme); copy or download the tree as a Mermaid
+  flowchart (labels, colours and direction included); import pasted
+  Mermaid as a new tree. Import understands the usual flowchart syntax
+  (any node shape, `-->`/`---`/`==>`/`-.->`, `|label|` or `-- label -->`,
+  chains, `&`) and refuses, naming the node, what a tree can't hold: two
+  parents, loops, several starting points, subgraphs
 
 ## What's next
 
-Rest of the MVP, roughly in this order:
-- Export PNG/SVG; Mermaid flowchart import/export
+The MVP list is done. Ideas, not yet ordered:
+- Mermaid subgraphs, and nodes with two parents (needs a graph layout)
+- A visible notice for repaired saves (see open problems)
 
 ## Open problems
 
@@ -77,8 +86,11 @@ Rest of the MVP, roughly in this order:
 - Deleting a node has no confirmation; undo is the safety net, but undo
   history is lost on reload (deleting a whole tree does ask first)
 - Two tabs open on the same tree overwrite each other's saves
-- The JS bundle is ~560 KB (181 KB gzipped); Vite warns above 500 KB. Fine
+- The JS bundle is ~590 KB (192 KB gzipped); Vite warns above 500 KB. Fine
   for now; splitting it is an option if load time ever matters
+- SVG export embeds the page's CSS and draws text in a foreignObject
+  (html-to-image): it looks right in browsers but is heavy (~200 KB) and
+  editors like Illustrator may not render the text
 - Mermaid graphs where a node has two parents won't fit the tree model as
   is; the model allows it later (edges are separate records), but the
   layout would need a graph algorithm (dagre/elk) for those

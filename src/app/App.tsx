@@ -1,3 +1,4 @@
+import { ExportMenu } from "../features/export/ExportMenu";
 import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
 import { ShortcutsDialog } from "../features/tree/ShortcutsDialog";
@@ -21,6 +22,7 @@ export function App() {
         <HistoryButtons />
         <DirectionToggle />
         <div className={styles.spacer} />
+        <ExportMenu />
         <ShortcutsDialog />
       </header>
       <main className={styles.main}>

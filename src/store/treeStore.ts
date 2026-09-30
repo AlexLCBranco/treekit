@@ -81,6 +81,8 @@ interface TreeStore {
   newTree: (name: string) => void;
   /** Copies the open tree into a new one and opens the copy. */
   duplicateTree: (name: string) => void;
+  /** Opens `state` (e.g. from a Mermaid import) as a new tree. */
+  importTree: (name: string, state: TreeState) => void;
   switchTree: (id: TreeId) => void;
   renameTree: (name: string) => void;
   /** Deletes a saved tree for good. Deleting the open one opens the newest
@@ -303,6 +305,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   duplicateTree: (name) => {
     flushSave();
     const doc: TreeDoc = { id: createTreeId(), name, state: tree.cloneTree(get().tree) };
+    set((s) => open(s, doc, createStored(doc, s.trees)));
+  },
+
+  importTree: (name, state) => {
+    flushSave();
+    const doc: TreeDoc = { id: createTreeId(), name, state };
     set((s) => open(s, doc, createStored(doc, s.trees)));
   },
 
