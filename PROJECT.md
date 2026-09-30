@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.9_
+_Last updated: 2026-09-29, v0.0.10_
 
 ## What it is
 
@@ -26,7 +26,7 @@ with Vitest tests.
 
 ## What works now
 
-- A root node on a pan/zoom canvas with a dot grid and zoom controls
+- A root node on a pan/zoom canvas with a dot grid and zoom controls; the mouse wheel scrolls the canvas, Ctrl+wheel or the zoom buttons zoom
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away

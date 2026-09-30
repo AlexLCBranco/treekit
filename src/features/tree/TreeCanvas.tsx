@@ -190,6 +190,10 @@ function TreeCanvasInner() {
           nodesDraggable={false}
           // Double-click renames a node; zooming on it would fight that.
           zoomOnDoubleClick={false}
+          // The wheel scrolls the canvas up/down (Shift = sideways); zoom
+          // lives on the zoom controls and Ctrl/Cmd + wheel or pinch.
+          panOnScroll
+          zoomOnScroll={false}
           // Tab is "add child" here, not React Flow's focus-cycling.
           disableKeyboardA11y
           // Space is "collapse/expand" here. React Flow would otherwise use
