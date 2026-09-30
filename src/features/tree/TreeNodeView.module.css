@@ -17,8 +17,19 @@
   text-align: center;
   cursor: default;
   transition:
+    transform var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* Hover, as on a Boardkit card: a slight lift, a stronger shadow and an
+   inner accent ring. Placed before `[data-selected]` so the selection ring
+   still wins. */
+.node:hover {
+  box-shadow:
+    var(--shadow-md),
+    inset 0 0 0 1px var(--node-accent);
+  transform: translateY(-1px);
 }
 
 /* The root reads as the tree's heading. */

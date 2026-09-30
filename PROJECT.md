@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.14_
+_Last updated: 2026-09-30, v0.0.15_
 
 ## What it is
 
@@ -28,6 +28,7 @@ with Vitest tests.
 
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
 - A root node on a pan/zoom canvas with a dot grid and zoom controls; the mouse wheel scrolls the canvas, Ctrl+wheel or the zoom pill (− 100% +; click the % to reset) zoom
+- Nodes lift slightly and show an accent ring on hover, like Boardkit cards
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
