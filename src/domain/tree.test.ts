@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { layoutTree } from "./layout";
-import { addChild, childrenOf, createTree, renameNode, visibleSubtree } from "./tree";
-import type { NodeId, TreeState } from "./types";
+import { layoutTree, type Size } from "./layout";
+import { addChild, childrenOf, createTree, parentEdgeOf, renameNode, setEdgeLabel, visibleSubtree } from "./tree";
+import type { EdgeId, NodeId, TreeState } from "./types";
 
 function add(state: TreeState, parent: NodeId, title = ""): { state: TreeState; id: NodeId } {
   const result = addChild(state, parent, title);
@@ -62,7 +62,7 @@ describe("layout", () => {
     const a = add(tree, tree.rootId);
     const b = add(a.state, tree.rootId);
     tree = b.state;
-    const pos = layoutTree(tree, new Map(), options);
+    const pos = layoutTree(tree, new Map(), options).positions;
     const root = pos.get(tree.rootId)!;
     const pa = pos.get(a.id)!;
     const pb = pos.get(b.id)!;
@@ -80,7 +80,7 @@ describe("layout", () => {
     const b1 = add(a2.state, b.id);
     tree = b1.state;
     const sizes = new Map([[a2.id, { width: 300, height: 90 }]]);
-    const pos = layoutTree(tree, sizes, options);
+    const pos = layoutTree(tree, sizes, options).positions;
     // a2 is the right-most grandchild under A; b1 must start after it.
     expect(pos.get(b1.id)!.x).toBeGreaterThanOrEqual(pos.get(a2.id)!.x + 300 + options.nodeGap);
     // Grandchildren share one row even though a2 is taller.
@@ -91,7 +91,93 @@ describe("layout", () => {
     let tree = createTree("R", "LR");
     const a = add(tree, tree.rootId);
     tree = a.state;
-    const pos = layoutTree(tree, new Map(), options);
+    const pos = layoutTree(tree, new Map(), options).positions;
     expect(pos.get(a.id)!.x).toBeGreaterThan(pos.get(tree.rootId)!.x);
+  });
+});
+
+describe("edge labels", () => {
+  it("sets and clears a label, leaving other slices untouched", () => {
+    const t0 = createTree();
+    const a = add(t0, t0.rootId);
+    const edge = parentEdgeOf(a.state, a.id)!;
+    const labelled = setEdgeLabel(a.state, edge.id, "yes");
+    expect(labelled.edges[edge.id].label).toBe("yes");
+    expect(labelled.nodes).toBe(a.state.nodes);
+    expect(setEdgeLabel(labelled, edge.id, "").edges[edge.id].label).toBe("");
+  });
+
+  it("returns the same state for no change or a missing edge", () => {
+    const t0 = createTree();
+    const a = add(t0, t0.rootId);
+    const edge = parentEdgeOf(a.state, a.id)!;
+    expect(setEdgeLabel(a.state, edge.id, "")).toBe(a.state);
+    expect(setEdgeLabel(a.state, "nope" as never, "x")).toBe(a.state);
+  });
+});
+
+describe("layout with edge labels", () => {
+  const options = { nodeGap: 20, rankGap: 40, fallbackSize: { width: 100, height: 40 } };
+
+  /** root -> [a, b], with label sizes set on the edges into a and b. */
+  function labelled(direction: "TB" | "LR", sizes: [Size | null, Size | null]) {
+    let tree = createTree("R", direction);
+    const a = add(tree, tree.rootId);
+    const b = add(a.state, tree.rootId);
+    tree = b.state;
+    const labels = new Map<EdgeId, Size>();
+    [a.id, b.id].forEach((id, i) => {
+      const size = sizes[i];
+      if (!size) return;
+      const edge = parentEdgeOf(tree, id)!;
+      tree = setEdgeLabel(tree, edge.id, "label");
+      labels.set(edge.id, size);
+    });
+    return { tree, a: a.id, b: b.id, labels };
+  }
+
+  it("widens the gap before a generation by its tallest label", () => {
+    const plain = labelled("TB", [null, null]);
+    const withLabel = labelled("TB", [{ width: 30, height: 18 }, null]);
+    const base = layoutTree(plain.tree, new Map(), options).positions;
+    const pos = layoutTree(withLabel.tree, new Map(), options, withLabel.labels).positions;
+    expect(pos.get(withLabel.a)!.y).toBe(base.get(plain.a)!.y + 18);
+    expect(pos.get(withLabel.b)!.y).toBe(pos.get(withLabel.a)!.y);
+  });
+
+  it("ignores a size left over for an edge whose label is now empty", () => {
+    const { tree, a, labels } = labelled("TB", [{ width: 30, height: 18 }, null]);
+    const cleared = setEdgeLabel(tree, parentEdgeOf(tree, a)!.id, "");
+    const pos = layoutTree(cleared, new Map(), options, labels).positions;
+    expect(pos.get(a)!.y).toBe(40 + options.rankGap);
+  });
+
+  it("spaces siblings apart by their labels when a label is wider than its node", () => {
+    const { tree, a, b, labels } = labelled("TB", [{ width: 200, height: 18 }, null]);
+    const pos = layoutTree(tree, new Map(), options, labels).positions;
+    // a's label is centred on a and 200 wide, so it reaches 50 past a's
+    // right side; b starts a node gap after that.
+    expect(pos.get(b)!.x).toBe(pos.get(a)!.x + 100 + 50 + options.nodeGap);
+  });
+
+  it("routes each edge: the bend half a gap past the parent, the label centred before the child", () => {
+    const { tree, a, labels } = labelled("TB", [{ width: 30, height: 20 }, null]);
+    const { positions, routes } = layoutTree(tree, new Map(), options, labels);
+    const route = routes.get(parentEdgeOf(tree, a)!.id)!;
+    const rootBottom = positions.get(tree.rootId)!.y + 40;
+    const bend = rootBottom + route.bendAfterSource;
+    const label = positions.get(a)!.y - route.labelBeforeTarget;
+    expect(bend).toBe(rootBottom + options.rankGap / 2);
+    // Label (20 tall) centred between the bend and the child: equal space
+    // above and below it.
+    expect(label - 10 - bend).toBe(positions.get(a)!.y - (label + 10));
+  });
+
+  it("uses label widths for the gap in LR mode", () => {
+    const plain = labelled("LR", [null, null]);
+    const withLabel = labelled("LR", [null, { width: 60, height: 18 }]);
+    const base = layoutTree(plain.tree, new Map(), options).positions;
+    const pos = layoutTree(withLabel.tree, new Map(), options, withLabel.labels).positions;
+    expect(pos.get(withLabel.b)!.x).toBe(base.get(plain.b)!.x + 60);
   });
 });

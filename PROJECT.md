@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.3_
+_Last updated: 2026-09-29, v0.0.4_
 
 ## What it is
 
@@ -29,6 +29,11 @@ with Vitest tests.
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
+- Edge labels ("yes", "if he dies"): select a node and press L, or
+  double-click a line or its label, to label the line leading into it;
+  clearing the text removes the label. Labels sit just before the child
+  they describe, the layout makes room for them, and they light up with
+  the selected node
 - Delete: Delete/Backspace removes a node and its branch; Shift+Delete
   removes just the node and moves its children up
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);
@@ -45,7 +50,6 @@ with Vitest tests.
 ## What's next
 
 Rest of the MVP, roughly in this order:
-- Edge labels ("yes", "if he dies")
 - Per-node colours (the data model and styling hook exist already)
 - Collapse/expand a branch (model and layout support it; needs a button)
 - Keyboard navigation between nodes; pan to a new node if it lands off-screen

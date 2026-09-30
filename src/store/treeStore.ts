@@ -4,7 +4,7 @@ import * as history from "../domain/history";
 import { createTreeId } from "../domain/ids";
 import { removeTree, upsertTree, type Registry } from "../domain/registry";
 import * as tree from "../domain/tree";
-import type { LayoutDirection, NodeId, TreeDoc, TreeId, TreeState } from "../domain/types";
+import type { EdgeId, LayoutDirection, NodeId, TreeDoc, TreeId, TreeState } from "../domain/types";
 import {
   deleteStoredTree,
   loadActiveTreeId,
@@ -42,9 +42,14 @@ interface TreeStore {
   readonly selectedId: NodeId | null;
   /** The node whose title is open for inline renaming, if any. */
   readonly editingId: NodeId | null;
+  /** The edge whose label is open for editing, if any. At most one of
+      `editingId` / `editingEdgeId` is set: one text field is open at a time. */
+  readonly editingEdgeId: EdgeId | null;
 
   addChild: (parentId: NodeId) => void;
   renameNode: (nodeId: NodeId, title: string) => void;
+  /** Sets an edge's label; an empty string removes it. */
+  setEdgeLabel: (edgeId: EdgeId, label: string) => void;
   /** Deletes the node and everything below it. */
   deleteBranch: (nodeId: NodeId) => void;
   /** Deletes only the node; its children move up to its parent. */
@@ -55,6 +60,9 @@ interface TreeStore {
   select: (nodeId: NodeId | null) => void;
   startEditing: (nodeId: NodeId) => void;
   stopEditing: () => void;
+  /** Opens an edge's label for editing and selects the node it leads to,
+      so a label and "its" node read as one thing. */
+  startEditingLabel: (edgeId: EdgeId) => void;
 
   /** Creates an empty tree and opens it. */
   newTree: (name: string) => void;
@@ -101,6 +109,7 @@ function open(s: TreeStore, doc: TreeDoc, trees: Registry): Partial<TreeStore> {
     newNodeId: null,
     selectedId: null,
     editingId: null,
+    editingEdgeId: null,
   };
 }
 
@@ -141,6 +150,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   newNodeId: null,
   selectedId: null,
   editingId: null,
+  editingEdgeId: null,
 
   addChild: (parentId) =>
     set((s) => {
@@ -161,6 +171,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       return commit(s, next);
     }),
 
+  setEdgeLabel: (edgeId, label) =>
+    set((s) => {
+      const next = tree.setEdgeLabel(s.tree, edgeId, label);
+      return next === s.tree ? s : commit(s, next);
+    }),
+
   deleteBranch: (nodeId) =>
     set((s) => {
       const next = tree.deleteBranch(s.tree, nodeId);
@@ -169,6 +185,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         ...commit(s, next),
         selectedId: tree.neighbourAfterDelete(s.tree, nodeId),
         editingId: null,
+        editingEdgeId: null,
       };
     }),
 
@@ -182,6 +199,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         ...commit(s, next),
         selectedId: firstChild ?? tree.neighbourAfterDelete(s.tree, nodeId),
         editingId: null,
+        editingEdgeId: null,
       };
     }),
 
@@ -204,6 +222,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         newNodeId: null,
         selectedId: keepIfPresent(step.state, s.selectedId),
         editingId: null,
+        editingEdgeId: null,
       };
     }),
 
@@ -217,17 +236,27 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         newNodeId: null,
         selectedId: keepIfPresent(step.state, s.selectedId),
         editingId: null,
+        editingEdgeId: null,
       };
     }),
 
   select: (nodeId) =>
-    set((s) => (s.selectedId === nodeId ? s : { selectedId: nodeId, editingId: null })),
+    set((s) =>
+      s.selectedId === nodeId ? s : { selectedId: nodeId, editingId: null, editingEdgeId: null },
+    ),
 
-  startEditing: (nodeId) => set({ selectedId: nodeId, editingId: nodeId }),
+  startEditing: (nodeId) => set({ selectedId: nodeId, editingId: nodeId, editingEdgeId: null }),
+
+  startEditingLabel: (edgeId) =>
+    set((s) => {
+      const edge = s.tree.edges[edgeId];
+      if (!edge) return s;
+      return { selectedId: edge.target, editingId: null, editingEdgeId: edgeId };
+    }),
 
   // Runs right after a rename's commit, so the "name the new node" window
   // closes here: a later rename of that node is its own undo step.
-  stopEditing: () => set({ editingId: null, newNodeId: null }),
+  stopEditing: () => set({ editingId: null, editingEdgeId: null, newNodeId: null }),
 
   // Tree management. Each one flushes the pending auto-save first, so the
   // outgoing tree's last edits are written before anything else happens.

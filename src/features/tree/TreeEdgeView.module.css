@@ -1,0 +1,33 @@
+/* An edge label: a small pill in the canvas colour, so the line appears to
+   pass behind it and the text reads cleanly over the dot grid. */
+.label {
+  position: absolute;
+  max-width: var(--edge-label-max-width);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-app);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-tight);
+  text-align: center;
+  /* React Flow's label layer ignores the pointer; the label opts back in. */
+  pointer-events: all;
+  cursor: default;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+/* Lit up with the node it leads to, so it reads as that node's label. */
+.label[data-selected] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* While typing, a minimum width so an empty field is still a target. */
+.label[data-editing] {
+  min-width: var(--edge-label-min-width);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}

@@ -53,6 +53,9 @@
      since dagre runs in JS, not CSS. */
   --node-min-width: 120px;
   --node-max-width: 240px;
+  /* Edge labels wrap past the max; the min keeps an empty field clickable. */
+  --edge-label-min-width: 56px;
+  --edge-label-max-width: 160px;
 
   /* ---- Stacking order ---- */
   --z-canvas: 1;

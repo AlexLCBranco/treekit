@@ -17,13 +17,14 @@ export function ShortcutHint() {
         ...(isRoot
           ? []
           : [
+              ["L", "label"],
               ["Del", "delete branch"],
               ["Shift+Del", "delete node only"],
             ]),
       ]
     : [
         ["Click", "select a node"],
-        ["Double-click", "rename"],
+        ["Double-click", "rename or label"],
       ];
 
   return (

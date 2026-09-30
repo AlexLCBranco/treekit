@@ -65,6 +65,13 @@ export function renameNode(state: TreeState, nodeId: NodeId, title: string): Tre
   return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, title } } };
 }
 
+/** Sets the text on an edge; an empty string removes the label. */
+export function setEdgeLabel(state: TreeState, edgeId: EdgeId, label: string): TreeState {
+  const edge = state.edges[edgeId];
+  if (!edge || edge.label === label) return state;
+  return { ...state, edges: { ...state.edges, [edgeId]: { ...edge, label } } };
+}
+
 export function setDirection(state: TreeState, direction: LayoutDirection): TreeState {
   return state.direction === direction ? state : { ...state, direction };
 }

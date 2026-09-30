@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { parentEdgeOf } from "../../domain/tree";
 import { useTreeStore } from "../../store/treeStore";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -36,6 +37,7 @@ function onCanvas(target: EventTarget | null): boolean {
  * On the selected node:
  *   Tab                        add a child (and start naming it)
  *   Enter, F2                  rename
+ *   L                          label the line leading into it
  *   Delete, Backspace          delete it and its branch
  *   Shift+Delete/Backspace     delete only it; its children move up
  *   Esc                        clear the selection
@@ -72,6 +74,13 @@ export function useTreeShortcuts() {
       } else if (key === "enter" || key === "f2") {
         event.preventDefault();
         store.startEditing(selectedId);
+      } else if (key === "l" && !event.shiftKey) {
+        const edge = parentEdgeOf(store.tree, selectedId);
+        if (edge) {
+          // Otherwise the "l" would be typed into the field as it opens.
+          event.preventDefault();
+          store.startEditingLabel(edge.id);
+        }
       } else if (key === "delete" || key === "backspace") {
         event.preventDefault();
         if (event.shiftKey) store.deleteNode(selectedId);

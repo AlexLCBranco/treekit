@@ -5,7 +5,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Edge,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
@@ -13,10 +12,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
-import type { NodeId } from "../../domain/types";
+import type { EdgeId, NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import { LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
 import styles from "./TreeCanvas.module.css";
+import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
 import { TreeNodeView, type TreeFlowNode } from "./TreeNodeView";
 import { useAnimatedPositions } from "./useAnimatedPositions";
 import { useTreeShortcuts } from "./useTreeShortcuts";
@@ -24,6 +24,7 @@ import { useTreeShortcuts } from "./useTreeShortcuts";
 // Defined once at module level: React Flow warns (and re-mounts every
 // node) if this object changes identity between renders.
 const nodeTypes = { tree: TreeNodeView };
+const edgeTypes = { tree: TreeEdgeView };
 
 /**
  * The tree on a pan/zoom canvas.
@@ -40,6 +41,7 @@ function TreeCanvasInner() {
   const tree = useTreeStore((s) => s.tree);
   const selectedId = useTreeStore((s) => s.selectedId);
   const select = useTreeStore((s) => s.select);
+  const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
   const { fitView } = useReactFlow();
 
   useTreeShortcuts();
@@ -47,11 +49,27 @@ function TreeCanvasInner() {
   // Measured sizes are view state, not tree data: they depend on fonts and
   // zoom-independent CSS, so they live here, never in the saved tree.
   const [sizes, setSizes] = useState<ReadonlyMap<NodeId, Size>>(() => new Map());
+  // Same for edge labels, which React Flow does not measure: each label
+  // reports its own size (see TreeEdgeView).
+  const [labelSizes, setLabelSizes] = useState<ReadonlyMap<EdgeId, Size>>(() => new Map());
+  const onLabelSize = useCallback((edgeId: EdgeId, size: Size | null) => {
+    setLabelSizes((prev) => {
+      const old = prev.get(edgeId);
+      if (size ? old && old.width === size.width && old.height === size.height : !old) return prev;
+      const next = new Map(prev);
+      if (size) next.set(edgeId, size);
+      else next.delete(edgeId);
+      return next;
+    });
+  }, []);
 
   const { nodeIds, edgeIds } = useMemo(() => visibleSubtree(tree), [tree]);
   const allMeasured = nodeIds.every((id) => sizes.has(id));
 
-  const targets = useMemo(() => layoutTree(tree, sizes, TREE_LAYOUT), [tree, sizes]);
+  const { positions: targets, routes } = useMemo(
+    () => layoutTree(tree, sizes, TREE_LAYOUT, labelSizes),
+    [tree, sizes, labelSizes],
+  );
 
   // The first layout snaps into place; from then on, every change glides.
   // (Set during render, React's pattern for state derived from earlier
@@ -93,9 +111,7 @@ function TreeCanvasInner() {
     [nodeIds, positions, targets, selectedId, sizes],
   );
 
-
-
-  const edges = useMemo<Edge[]>(
+  const edges = useMemo<TreeFlowEdge[]>(
     () =>
       edgeIds.map((edgeId) => {
         const edge = tree.edges[edgeId];
@@ -103,12 +119,14 @@ function TreeCanvasInner() {
           id: edgeId,
           source: edge.source,
           target: edge.target,
-          type: "smoothstep",
-          pathOptions: { borderRadius: 10 },
+          type: "tree",
+          data: { route: routes.get(edgeId)!, onLabelSize },
+          // Not selectable on its own: clicking a line selects the node it
+          // leads to (see onEdgeClick), since a label belongs to that node.
           selectable: false,
         };
       }),
-    [edgeIds, tree.edges],
+    [edgeIds, tree.edges, routes, onLabelSize],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<TreeFlowNode>[]) => {
@@ -133,8 +151,11 @@ function TreeCanvasInner() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onNodeClick={(_, node) => select(node.id as NodeId)}
+        onEdgeClick={(_, edge) => select(edge.target as NodeId)}
+        onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
         onPaneClick={() => select(null)}
         nodesConnectable={false}
         nodesDraggable={false}
