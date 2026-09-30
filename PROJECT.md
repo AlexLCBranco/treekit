@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.20_
+_Last updated: 2026-09-30, v0.0.21_
 
 ## What it is
 

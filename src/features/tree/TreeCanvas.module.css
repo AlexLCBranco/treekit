@@ -14,9 +14,7 @@
    Flow's `overflow: hidden` boxes (hidden still allows scrolling, just no
    scrollbar), sliding the whole canvas. `clip` cannot be scrolled at all. */
 .canvas :global(.react-flow),
-.canvas :global(.react-flow__renderer),
-.canvas :global(.react-flow__pane),
-.canvas :global(.react-flow__viewport) {
+.canvas :global(.react-flow__renderer) {
   overflow: clip !important; /* React Flow sets `hidden` inline */
 }
 
