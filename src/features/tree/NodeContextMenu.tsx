@@ -1,5 +1,5 @@
-import { ChevronsDownUp, ChevronsUpDown, NotebookPen } from "lucide-react";
-import { useState, type MouseEvent, type ReactElement } from "react";
+import { ChevronsDownUp, ChevronsUpDown, GitFork, NotebookPen } from "lucide-react";
+import { useRef, useState, type MouseEvent, type ReactElement } from "react";
 
 import {
   ContextMenu,
@@ -22,8 +22,8 @@ function capitalise(word: string): string {
 }
 
 /**
- * The right-click menu for nodes: notes, collapse/expand (for nodes with
- * children) and the colour palette.
+ * The right-click menu for nodes: notes, fork, collapse/expand (for nodes
+ * with children) and the colour palette.
  *
  * One menu wraps the whole canvas rather than one per node: on right-click
  * it looks up which node is under the pointer (React Flow puts the node's id
@@ -38,6 +38,13 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
   const [targetId, setTargetId] = useState<NodeId | null>(null);
   const isTyping = useTreeStore((s) => s.editingId !== null || s.editingEdgeId !== null);
   const select = useTreeStore((s) => s.select);
+  // An action that puts focus in a text field (the notes, a fork's name)
+  // waits until the menu has fully closed: while it animates out, the menu
+  // still holds focus and would pull it straight back out of the field.
+  const afterClose = useRef<(() => void) | null>(null);
+  const runAfterClose = (action: () => void) => {
+    afterClose.current = action;
+  };
 
   function onContextMenu(event: MouseEvent) {
     const nodeEl = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node");
@@ -60,12 +67,18 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent
-        className="w-52"
+        className="w-60"
         // Let focus fall back to the page, not the canvas wrapper, so the
         // canvas keyboard shortcuts keep working after the menu closes.
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const action = afterClose.current;
+          afterClose.current = null;
+          action?.();
+        }}
       >
-        {targetId && <NotesItem nodeId={targetId} />}
+        {targetId && <NotesItem nodeId={targetId} runAfterClose={runAfterClose} />}
+        {targetId && <ForkItem nodeId={targetId} runAfterClose={runAfterClose} />}
         {targetId && <CollapseItem nodeId={targetId} />}
         {targetId && <ColorItems nodeId={targetId} />}
       </ContextMenuContent>
@@ -74,13 +87,30 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
 }
 
 /** "Notes…": opens the notes panel on this node. */
-function NotesItem({ nodeId }: { readonly nodeId: NodeId }) {
+type ItemProps = {
+  readonly nodeId: NodeId;
+  readonly runAfterClose: (action: () => void) => void;
+};
+
+function NotesItem({ nodeId, runAfterClose }: ItemProps) {
   const openNotes = useTreeStore((s) => s.openNotes);
   return (
-    <ContextMenuItem onSelect={() => openNotes(nodeId)}>
+    <ContextMenuItem onSelect={() => runAfterClose(() => openNotes(nodeId))}>
       <NotebookPen aria-hidden />
       Notes…
       <ContextMenuShortcut>N</ContextMenuShortcut>
+    </ContextMenuItem>
+  );
+}
+
+/** "Fork branch to new tree": copies it into a new tree beside this one. */
+function ForkItem({ nodeId, runAfterClose }: ItemProps) {
+  const forkBranch = useTreeStore((s) => s.forkBranch);
+  return (
+    <ContextMenuItem onSelect={() => runAfterClose(() => forkBranch(nodeId))}>
+      <GitFork aria-hidden />
+      Fork branch to new tree
+      <ContextMenuShortcut>F</ContextMenuShortcut>
     </ContextMenuItem>
   );
 }

@@ -45,6 +45,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Enter, F2                  rename
  *   L                          label the line leading into it
  *   N                          open its notes
+ *   F                          fork its branch into a new tree
  *   Space                      collapse or expand its branch
  *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
@@ -122,6 +123,10 @@ export function useTreeShortcuts() {
         // Otherwise the "n" would be typed into the notes as they open.
         event.preventDefault();
         store.openNotes(selectedId);
+      } else if (key === "f" && !event.shiftKey) {
+        // Otherwise the "f" would be typed into the new tree's name.
+        event.preventDefault();
+        store.forkBranch(selectedId);
       } else if (key === " ") {
         // Also stops the page scrolling.
         event.preventDefault();

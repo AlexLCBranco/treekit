@@ -284,6 +284,70 @@ export function cloneTree(state: TreeState): TreeState {
   return { roots, trash, nodes, edges, childEdges, direction: state.direction };
 }
 
+/** The root of the tree `nodeId` belongs to (itself for a root). */
+export function rootOf(state: TreeState, nodeId: NodeId): NodeId {
+  let id = nodeId;
+  for (let edge = parentEdgeOf(state, id); edge; edge = parentEdgeOf(state, id)) id = edge.source;
+  return id;
+}
+
+/**
+ * "Fork branch to new tree": copies `nodeId` and everything below it
+ * (titles, notes, colours, fold state, the labels inside the branch) into a
+ * new tree placed right after the tree it came from. The copy gets fresh
+ * ids and shares nothing with the original, which is left untouched. The
+ * copied node becomes the new root, titled `title`; its incoming label is
+ * not copied, since a root has no incoming line. Returns the new root's id.
+ */
+export function forkBranch(
+  state: TreeState,
+  nodeId: NodeId,
+  title: string,
+): { state: TreeState; nodeId: NodeId | null } {
+  if (!state.nodes[nodeId]) return { state, nodeId: null };
+  const at = state.roots.indexOf(rootOf(state, nodeId));
+  // A branch of a trashed tree has nowhere on the board to go after.
+  if (at === -1) return { state, nodeId: null };
+
+  const ids = new Map<NodeId, NodeId>();
+  for (const id of subtreeIds(state, nodeId)) ids.set(id, createNodeId());
+  const nodes: Record<NodeId, TreeNode> = { ...state.nodes };
+  const edges: Record<EdgeId, TreeEdge> = { ...state.edges };
+  const childEdges: Record<NodeId, readonly EdgeId[]> = { ...state.childEdges };
+  for (const [oldId, id] of ids) {
+    nodes[id] = { ...state.nodes[oldId], id };
+    childEdges[id] = (state.childEdges[oldId] ?? []).map((edgeId) => {
+      const edge = state.edges[edgeId];
+      const copy: TreeEdge = { ...edge, id: createEdgeId(), source: id, target: ids.get(edge.target)! };
+      edges[copy.id] = copy;
+      return copy.id;
+    });
+  }
+  const root = ids.get(nodeId)!;
+  nodes[root] = { ...nodes[root], title };
+
+  return {
+    nodeId: root,
+    state: {
+      ...state,
+      roots: [...state.roots.slice(0, at + 1), root, ...state.roots.slice(at + 1)],
+      nodes,
+      edges,
+      childEdges,
+    },
+  };
+}
+
+/** The name a forked tree starts with: "<tree name> — <node title>". A
+    forked root is a copy of its whole tree, so it is "<tree name> (copy)",
+    like Duplicate tree. */
+export function forkTitle(state: TreeState, nodeId: NodeId): string {
+  const root = rootOf(state, nodeId);
+  const treeName = state.nodes[root]?.title || "Untitled";
+  if (root === nodeId) return `${treeName} (copy)`;
+  return `${treeName} — ${state.nodes[nodeId]?.title || "Untitled"}`;
+}
+
 /** Child node ids of `nodeId`, in sibling order. */
 export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
   return (state.childEdges[nodeId] ?? []).map((edgeId) => state.edges[edgeId].target);

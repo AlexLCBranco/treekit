@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.28_
+_Last updated: 2026-09-30, v0.0.29_
 
 ## What it is
 
@@ -65,6 +65,14 @@ with Vitest tests.
   shown) is one undo step. A node with notes shows a small icon on its
   corner, and hovering it shows the first four lines. Notes never change a
   node's size or the layout
+- Fork a branch into a new tree, to compare alternatives side by side:
+  right-click a node > "Fork branch to new tree", or F. The node and
+  everything under it (titles, notes, colours, labels inside the branch,
+  fold state) are copied into a new tree right after the current one in
+  the row; the copied node becomes its root. The copy shares nothing with
+  the original, which is untouched. It is named "<tree name> — <node
+  title>" (forking a root gives "<tree name> (copy)") and opens for
+  renaming; the fork and its naming are one undo step
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
@@ -112,8 +120,7 @@ with Vitest tests.
 
 ## What's next
 
-In progress, in this order (the "sandbox" set, for branching stories):
-- Fork a branch into a new tree beside the current one
+In progress (the "sandbox" set, for branching stories):
 - Node status: keep / maybe / cut, with a "Hide cut branches" toggle
 
 Ideas, not yet ordered:

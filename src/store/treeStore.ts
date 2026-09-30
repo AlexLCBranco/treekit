@@ -69,6 +69,9 @@ interface TreeStore {
       trees, and opens its root for naming. */
   addRoot: (index: number) => void;
   renameNode: (nodeId: NodeId, title: string) => void;
+  /** Copies the node's branch into a new tree right after its own, selects
+      the new root and opens it for renaming -- all one undo step. */
+  forkBranch: (nodeId: NodeId) => void;
   /** Sets a node's palette colour; `null` clears it. */
   setNodeColor: (nodeId: NodeId, color: PaletteColor | null) => void;
   /** Folds or unfolds a node's branch. If that hides the selected node,
@@ -226,6 +229,22 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     set((s) => {
       const { state, nodeId } = tree.addRoot(s.tree, index);
       return { ...commit(s, state), newNodeId: nodeId, selectedId: nodeId, editingId: nodeId };
+    }),
+
+  forkBranch: (nodeId) =>
+    set((s) => {
+      const { state, nodeId: rootId } = tree.forkBranch(s.tree, nodeId, tree.forkTitle(s.tree, nodeId));
+      if (!rootId) return s;
+      // Like a new tree: named straight away, and the naming folds into
+      // the fork's undo step (`newNodeId`).
+      return {
+        ...commit(s, state),
+        newNodeId: rootId,
+        selectedId: rootId,
+        selectedIds: [rootId],
+        editingId: rootId,
+        editingEdgeId: null,
+      };
     }),
 
   renameNode: (nodeId, title) =>
