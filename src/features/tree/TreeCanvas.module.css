@@ -7,6 +7,17 @@
   width: 100%;
   height: 100%;
   background: var(--surface-app);
+  overflow: clip;
+}
+
+/* Dragging a marquee past the edge makes the browser auto-scroll React
+   Flow's `overflow: hidden` boxes (hidden still allows scrolling, just no
+   scrollbar), sliding the whole canvas. `clip` cannot be scrolled at all. */
+.canvas :global(.react-flow),
+.canvas :global(.react-flow__renderer),
+.canvas :global(.react-flow__pane),
+.canvas :global(.react-flow__viewport) {
+  overflow: clip !important; /* React Flow sets `hidden` inline */
 }
 
 .canvas :global(.react-flow__edge-path) {
