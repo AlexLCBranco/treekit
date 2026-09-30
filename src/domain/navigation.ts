@@ -121,3 +121,16 @@ export function revealViewport(
   const dy = shift(position.y * zoom + viewport.y, size.height * zoom, screen.height);
   return dx === 0 && dy === 0 ? null : { x: viewport.x + dx, y: viewport.y + dy, zoom };
 }
+
+export interface Rect extends Point, Size {}
+
+/**
+ * The camera that puts a rectangle's top-left corner `margin` pixels from
+ * the screen's top-left corner. Zooms out (never in past `maxZoom`) only
+ * as far as needed for the whole rectangle to fit.
+ */
+export function topLeftViewport(bounds: Rect, screen: Size, margin: number, maxZoom: number): Viewport {
+  const fit = Math.min((screen.width - 2 * margin) / bounds.width, (screen.height - 2 * margin) / bounds.height);
+  const zoom = Math.max(0.01, Math.min(maxZoom, fit));
+  return { x: margin - bounds.x * zoom, y: margin - bounds.y * zoom, zoom };
+}

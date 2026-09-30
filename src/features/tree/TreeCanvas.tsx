@@ -12,10 +12,11 @@ import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
-import { revealViewport } from "../../domain/navigation";
+import { revealViewport, topLeftViewport } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
+import { useViewStore } from "../../store/viewStore";
 import { LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
@@ -85,6 +86,34 @@ function TreeCanvasInner() {
   const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
   const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
 
+  // Frame the whole tree: centred (React Flow's fit) or with its top-left
+  // corner in the page's top-left. Never zooms in past 100%. Reads the
+  // alignment at call time so it always follows the latest choice.
+  const frame = useCallback(
+    (duration: number) => {
+      if (useViewStore.getState().alignment === "center") {
+        void fitView({ maxZoom: 1, padding: 0.3, duration });
+        return;
+      }
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const [id, p] of targets) {
+        const size = sizes.get(id) ?? TREE_LAYOUT.fallbackSize;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x + size.width);
+        maxY = Math.max(maxY, p.y + size.height);
+      }
+      if (minX === Infinity) return;
+      const { width, height } = flowStore.getState();
+      const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      void setViewport(topLeftViewport(bounds, { width, height }, REVEAL_MARGIN, 1), { duration });
+    },
+    [fitView, setViewport, flowStore, targets, sizes],
+  );
+
   // Frame the tree once it first has real sizes, capped at 100% so a lone
   // root is not blown up to fill the screen.
   const didFit = useRef(false);
@@ -96,8 +125,18 @@ function TreeCanvasInner() {
     // The fit shows the whole tree, selection included; revealing it too
     // would pan from the not-yet-fitted camera and fight the fit.
     revealedId.current = useTreeStore.getState().selectedId;
-    requestAnimationFrame(() => void fitView({ maxZoom: 1, padding: 0.3 }));
-  }, [hasSettled, fitView]);
+    requestAnimationFrame(() => frame(0));
+  }, [hasSettled, frame]);
+
+  // Switching alignment re-frames the tree with a glide (not on first
+  // mount: the initial fit above handles that).
+  const alignment = useViewStore((s) => s.alignment);
+  const lastAlignment = useRef(alignment);
+  useEffect(() => {
+    if (lastAlignment.current === alignment) return;
+    lastAlignment.current = alignment;
+    if (hasSettled) frame(REVEAL_PAN_MS);
+  }, [alignment, hasSettled, frame]);
 
   // Keep the selection in view: when a different node gets selected (arrow
   // keys, a new child, the selection moving after a delete or undo), pan

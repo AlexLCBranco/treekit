@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { arrowToMove, moveFrom, revealViewport } from "./navigation";
+import { arrowToMove, moveFrom, revealViewport, topLeftViewport } from "./navigation";
 import { addChild, createTree, setCollapsed } from "./tree";
 import type { NodeId, TreeState } from "./types";
 
@@ -112,5 +112,21 @@ describe("revealViewport", () => {
   it("aligns a node bigger than the screen by its start", () => {
     const huge = { width: 2000, height: 40 };
     expect(revealViewport(vp, screen, { x: 500, y: 300 }, huge, 40)).toEqual({ x: -460, y: 0, zoom: 1 });
+  });
+});
+
+describe("topLeftViewport", () => {
+  const screen = { width: 800, height: 600 };
+
+  it("puts the top-left corner at the margin at 100%", () => {
+    const bounds = { x: -200, y: 10, width: 400, height: 300 };
+    expect(topLeftViewport(bounds, screen, 40, 1)).toEqual({ x: 240, y: 30, zoom: 1 });
+  });
+
+  it("zooms out just enough for a big tree to fit", () => {
+    const bounds = { x: 0, y: 0, width: 1440, height: 100 };
+    const vp = topLeftViewport(bounds, screen, 40, 1);
+    expect(vp.zoom).toBeCloseTo(0.5);
+    expect(vp.x).toBe(40);
   });
 });
