@@ -39,6 +39,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Tab                        add a child (and start naming it)
  *   Enter, F2                  rename
  *   L                          label the line leading into it
+ *   Space                      collapse or expand its branch
  *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
  *   Shift+Delete/Backspace     delete only it; its children move up
@@ -83,6 +84,10 @@ export function useTreeShortcuts() {
           event.preventDefault();
           store.startEditingLabel(edge.id);
         }
+      } else if (key === " ") {
+        // Also stops the page scrolling.
+        event.preventDefault();
+        store.toggleCollapsed(selectedId);
       } else if (key === "delete" || key === "backspace") {
         event.preventDefault();
         if (event.shiftKey) store.deleteNode(selectedId);

@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.6_
+_Last updated: 2026-09-29, v0.0.7_
 
 ## What it is
 
@@ -37,6 +37,12 @@ with Vitest tests.
 - Colours: right-click a node for a menu of 8 fixed colours (or none), or
   select it and press 1–8 (0 clears). The node gets a tint and border in
   that colour; lines stay neutral, and new children start uncoloured
+- Collapse/expand a branch: the "−" beside a node's "+", Space on the
+  selected node, or the right-click menu. A folded node shows a badge with
+  how many nodes it hides (click it to expand); the branch is hidden, not
+  deleted, is saved that way, and folding is an undo step. If the selected
+  node gets folded away, the selection moves to the folded node; expanding
+  grows the branch back out of its node
 - Delete: Delete/Backspace removes a node and its branch; Shift+Delete
   removes just the node and moves its children up
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);
@@ -54,8 +60,6 @@ with Vitest tests.
 ## What's next
 
 Rest of the MVP, roughly in this order:
-- Collapse/expand a branch (model and layout support it; needs a button,
-  and a place in the new right-click menu)
 - Keyboard navigation between nodes; pan to a new node if it lands off-screen
 - Export PNG/SVG; Mermaid flowchart import/export
 

@@ -2,6 +2,7 @@ import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } f
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
+import { hiddenCount } from "../../domain/tree";
 import type { NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import styles from "./TreeNodeView.module.css";
@@ -12,12 +13,14 @@ import styles from "./TreeNodeView.module.css";
 export type TreeFlowNode = Node<Record<string, never>, "tree">;
 
 /**
- * One node on the canvas: its title (inline-renamable) and a "+" button
- * that adds a child on the side the tree grows towards.
+ * One node on the canvas: its title (inline-renamable), and on the side the
+ * tree grows towards, a "+" that adds a child and (if it has children) a
+ * button that folds the branch. A folded node shows how many nodes it hides.
  *
- * Subscribes narrowly: only to its own node record, whether it is being
- * edited, and the tree's direction. Renaming one node re-renders that node
- * alone.
+ * Subscribes narrowly: only to its own node record, its child count,
+ * whether it is being edited, and the tree's direction. Renaming one node
+ * re-renders that node alone. (The hidden count is a number, so the
+ * selector's result only "changes" when the count does.)
  */
 export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodeProps<TreeFlowNode>) {
   const nodeId = id as NodeId;
@@ -25,6 +28,11 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   const isEditing = useTreeStore((s) => s.editingId === nodeId);
   const isRoot = useTreeStore((s) => s.tree.rootId === nodeId);
   const direction = useTreeStore((s) => s.tree.direction);
+  const childCount = useTreeStore((s) => s.tree.childEdges[nodeId]?.length ?? 0);
+  const hidden = useTreeStore((s) =>
+    s.tree.nodes[nodeId]?.collapsed ? hiddenCount(s.tree, nodeId) : 0,
+  );
+  const toggleCollapsed = useTreeStore((s) => s.toggleCollapsed);
   const addChild = useTreeStore((s) => s.addChild);
   const renameNode = useTreeStore((s) => s.renameNode);
   const startEditing = useTreeStore((s) => s.startEditing);
@@ -49,6 +57,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       data-selected={selected || undefined}
       data-root={isRoot || undefined}
       data-colored={node.color ? true : undefined}
+      data-collapsed={node.collapsed || undefined}
       data-direction={direction}
       style={style}
       onDoubleClick={() => startEditing(nodeId)}
@@ -83,7 +92,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
 
       <button
         type="button"
-        className={`${styles.addChild} nodrag nopan`}
+        className={`${styles.nodeButton} ${styles.addChild} nodrag nopan`}
         onClick={(event) => {
           event.stopPropagation();
           addChild(nodeId);
@@ -94,6 +103,23 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       >
         +
       </button>
+
+      {childCount > 0 && (
+        <button
+          type="button"
+          className={`${styles.nodeButton} ${styles.collapse} nodrag nopan`}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleCollapsed(nodeId);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          aria-label={node.collapsed ? `Expand branch (${hidden} hidden)` : "Collapse branch"}
+          aria-expanded={!node.collapsed}
+          title={node.collapsed ? `Expand: ${hidden} hidden (Space)` : "Collapse branch (Space)"}
+        >
+          {node.collapsed ? hidden : "−"}
+        </button>
+      )}
     </div>
   );
 });

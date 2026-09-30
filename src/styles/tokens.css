@@ -53,6 +53,8 @@
      since dagre runs in JS, not CSS. */
   --node-min-width: 120px;
   --node-max-width: 240px;
+  /* The round "+" and collapse buttons on a node's growing side. */
+  --node-button-size: 22px;
   /* Edge labels wrap past the max; the min keeps an empty field clickable. */
   --edge-label-min-width: 56px;
   --edge-label-max-width: 160px;

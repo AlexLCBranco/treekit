@@ -79,6 +79,37 @@ export function setEdgeLabel(state: TreeState, edgeId: EdgeId, label: string): T
   return { ...state, edges: { ...state.edges, [edgeId]: { ...edge, label } } };
 }
 
+/**
+ * Folds (`collapsed: true`) or unfolds a node's branch. Its children are
+ * hidden, never deleted. A leaf has nothing to fold, so collapsing one is a
+ * no-op (and records no undo step).
+ */
+export function setCollapsed(state: TreeState, nodeId: NodeId, collapsed: boolean): TreeState {
+  const node = state.nodes[nodeId];
+  if (!node || node.collapsed === collapsed) return state;
+  if (collapsed && (state.childEdges[nodeId] ?? []).length === 0) return state;
+  return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, collapsed } } };
+}
+
+/** How many nodes a collapsed node hides: everything below it. */
+export function hiddenCount(state: TreeState, nodeId: NodeId): number {
+  return state.nodes[nodeId] ? subtreeIds(state, nodeId).length - 1 : 0;
+}
+
+/**
+ * The node itself if it is on screen, else the collapsed ancestor that
+ * hides it (the one nearest the root), or `null` if it does not exist.
+ * Keeps the selection on something visible after a collapse or an undo.
+ */
+export function visibleAncestor(state: TreeState, nodeId: NodeId): NodeId | null {
+  if (!state.nodes[nodeId]) return null;
+  let visible = nodeId;
+  for (let edge = parentEdgeOf(state, nodeId); edge; edge = parentEdgeOf(state, edge.source)) {
+    if (state.nodes[edge.source].collapsed) visible = edge.source;
+  }
+  return visible;
+}
+
 export function setDirection(state: TreeState, direction: LayoutDirection): TreeState {
   return state.direction === direction ? state : { ...state, direction };
 }

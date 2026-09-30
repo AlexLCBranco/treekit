@@ -165,6 +165,9 @@ function TreeCanvasInner() {
           zoomOnDoubleClick={false}
           // Tab is "add child" here, not React Flow's focus-cycling.
           disableKeyboardA11y
+          // Space is "collapse/expand" here. React Flow would otherwise use
+          // holding Space as "drag to pan", which plain drag already does.
+          panActivationKeyCode={null}
           deleteKeyCode={null}
           minZoom={0.2}
           maxZoom={2}

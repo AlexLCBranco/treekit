@@ -14,8 +14,9 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3;
  * interpolated positions through React Flow keeps edges attached for the
  * whole glide.
  *
- * A node with no previous position starts from its parent's current one
- * (`parentOf`), so a new child grows out of its parent.
+ * A node with no previous position starts from its nearest ancestor that
+ * has one (`parentOf`), so a new child grows out of its parent, and a whole
+ * re-expanded branch grows out of the node that was expanded.
  */
 export function useAnimatedPositions(
   targets: ReadonlyMap<NodeId, Point>,
@@ -37,10 +38,11 @@ export function useAnimatedPositions(
 
     const from = new Map<NodeId, Point>();
     for (const [id, target] of targets) {
-      const parent = parentOf(id);
+      let ancestor = parentOf(id);
+      while (ancestor && !currentRef.current.has(ancestor)) ancestor = parentOf(ancestor);
       from.set(
         id,
-        currentRef.current.get(id) ?? (parent && currentRef.current.get(parent)) ?? target,
+        currentRef.current.get(id) ?? (ancestor && currentRef.current.get(ancestor)) ?? target,
       );
     }
 

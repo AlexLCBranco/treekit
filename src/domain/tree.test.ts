@@ -5,10 +5,13 @@ import {
   addChild,
   childrenOf,
   createTree,
+  hiddenCount,
   parentEdgeOf,
   renameNode,
+  setCollapsed,
   setEdgeLabel,
   setNodeColor,
+  visibleAncestor,
   visibleSubtree,
 } from "./tree";
 import type { EdgeId, NodeId, TreeState } from "./types";
@@ -74,6 +77,67 @@ describe("tree operations", () => {
     tree = add(tree, child.id).state;
     expect(tree.nodes[child.id].collapsed).toBe(false);
     expect(visibleSubtree(tree).nodeIds).toHaveLength(4);
+  });
+});
+
+describe("collapse", () => {
+  // root -> a -> b -> c, plus root -> d
+  function chain() {
+    const tree = createTree();
+    const a = add(tree, tree.rootId);
+    const b = add(a.state, a.id);
+    const c = add(b.state, b.id);
+    const d = add(c.state, tree.rootId);
+    return { tree: d.state, a: a.id, b: b.id, c: c.id, d: d.id };
+  }
+
+  it("folds and unfolds a branch without deleting it", () => {
+    const { tree, a, d } = chain();
+    const folded = setCollapsed(tree, a, true);
+    expect(folded.nodes[a].collapsed).toBe(true);
+    expect(visibleSubtree(folded).nodeIds).toEqual([tree.rootId, a, d]);
+    expect(Object.keys(folded.nodes)).toHaveLength(5);
+    expect(folded.edges).toBe(tree.edges);
+
+    const unfolded = setCollapsed(folded, a, false);
+    expect(visibleSubtree(unfolded).nodeIds).toHaveLength(5);
+  });
+
+  it("treats leaves, repeats and missing nodes as no-ops", () => {
+    const { tree, a, c } = chain();
+    expect(setCollapsed(tree, c, true)).toBe(tree);
+    expect(setCollapsed(tree, a, false)).toBe(tree);
+    expect(setCollapsed(tree, "nope" as NodeId, true)).toBe(tree);
+    const folded = setCollapsed(tree, a, true);
+    expect(setCollapsed(folded, a, true)).toBe(folded);
+  });
+
+  it("counts every node below a collapsed one, nested folds included", () => {
+    const { tree, a, b } = chain();
+    expect(hiddenCount(tree, a)).toBe(2);
+    expect(hiddenCount(setCollapsed(tree, b, true), a)).toBe(2);
+    expect(hiddenCount(tree, tree.rootId)).toBe(4);
+    expect(hiddenCount(tree, "nope" as NodeId)).toBe(0);
+  });
+
+  it("finds the outermost collapsed ancestor hiding a node", () => {
+    const { tree, a, b, c, d } = chain();
+    expect(visibleAncestor(tree, c)).toBe(c);
+    const both = setCollapsed(setCollapsed(tree, a, true), b, true);
+    expect(visibleAncestor(both, c)).toBe(a);
+    expect(visibleAncestor(both, b)).toBe(a);
+    expect(visibleAncestor(both, a)).toBe(a);
+    expect(visibleAncestor(both, d)).toBe(d);
+    expect(visibleAncestor(both, "nope" as NodeId)).toBeNull();
+  });
+
+  it("lays out a collapsed node like a leaf", () => {
+    const { tree, a, b } = chain();
+    const options = { nodeGap: 20, rankGap: 40, fallbackSize: { width: 100, height: 40 } };
+    const { positions, routes } = layoutTree(setCollapsed(tree, a, true), new Map(), options);
+    expect(positions.has(b)).toBe(false);
+    expect(positions.size).toBe(3);
+    expect(routes.size).toBe(2);
   });
 });
 

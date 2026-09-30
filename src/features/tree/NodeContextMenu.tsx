@@ -1,11 +1,14 @@
+import { ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { useState, type MouseEvent, type ReactElement } from "react";
 
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuItem,
   ContextMenuLabel,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
+  ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "../../components/ui/context-menu";
@@ -19,7 +22,8 @@ function capitalise(word: string): string {
 }
 
 /**
- * The right-click menu for nodes: for now, the colour palette.
+ * The right-click menu for nodes: collapse/expand (for nodes with
+ * children) and the colour palette.
  *
  * One menu wraps the whole canvas rather than one per node: on right-click
  * it looks up which node is under the pointer (React Flow puts the node's id
@@ -56,14 +60,35 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent
-        className="w-44"
+        className="w-52"
         // Let focus fall back to the page, not the canvas wrapper, so the
         // canvas keyboard shortcuts keep working after the menu closes.
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
+        {targetId && <CollapseItem nodeId={targetId} />}
         {targetId && <ColorItems nodeId={targetId} />}
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+/** "Collapse/Expand branch", with a separator under it. Absent for a leaf,
+    which has nothing to fold. */
+function CollapseItem({ nodeId }: { readonly nodeId: NodeId }) {
+  const hasChildren = useTreeStore((s) => (s.tree.childEdges[nodeId]?.length ?? 0) > 0);
+  const collapsed = useTreeStore((s) => s.tree.nodes[nodeId]?.collapsed ?? false);
+  const toggleCollapsed = useTreeStore((s) => s.toggleCollapsed);
+  if (!hasChildren) return null;
+
+  return (
+    <>
+      <ContextMenuItem onSelect={() => toggleCollapsed(nodeId)}>
+        {collapsed ? <ChevronsUpDown aria-hidden /> : <ChevronsDownUp aria-hidden />}
+        {collapsed ? "Expand branch" : "Collapse branch"}
+        <ContextMenuShortcut>Space</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+    </>
   );
 }
 

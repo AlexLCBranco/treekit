@@ -58,6 +58,9 @@ interface TreeStore {
   renameNode: (nodeId: NodeId, title: string) => void;
   /** Sets a node's palette colour; `null` clears it. */
   setNodeColor: (nodeId: NodeId, color: PaletteColor | null) => void;
+  /** Folds or unfolds a node's branch. If that hides the selected node,
+      the selection moves to the folded node. */
+  toggleCollapsed: (nodeId: NodeId) => void;
   /** Sets an edge's label; an empty string removes it. */
   setEdgeLabel: (edgeId: EdgeId, label: string) => void;
   /** Deletes the node and everything below it. */
@@ -92,9 +95,10 @@ function commit(s: Snapshot, next: TreeState): Pick<TreeStore, "tree" | "history
   return { tree: next, history: history.record(s.history, s.tree, next), newNodeId: null };
 }
 
-/** After undo/redo, drop a selection that points at a node that is gone. */
+/** After undo/redo, drop a selection that points at a node that is gone,
+    and move one that is now folded away to the node hiding it. */
 function keepIfPresent(state: TreeState, id: NodeId | null): NodeId | null {
-  return id && state.nodes[id] ? id : null;
+  return id && tree.visibleAncestor(state, id);
 }
 
 function blankDoc(name: string): TreeDoc {
@@ -185,6 +189,18 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     set((s) => {
       const next = tree.setNodeColor(s.tree, nodeId, color);
       return next === s.tree ? s : commit(s, next);
+    }),
+
+  toggleCollapsed: (nodeId) =>
+    set((s) => {
+      const node = s.tree.nodes[nodeId];
+      if (!node) return s;
+      const next = tree.setCollapsed(s.tree, nodeId, !node.collapsed);
+      if (next === s.tree) return s;
+      const selectedId = keepIfPresent(next, s.selectedId);
+      if (selectedId === s.selectedId) return commit(s, next);
+      // The selected node (maybe mid-rename) was folded away.
+      return { ...commit(s, next), selectedId, editingId: null, editingEdgeId: null };
     }),
 
   setEdgeLabel: (edgeId, label) =>

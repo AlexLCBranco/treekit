@@ -49,3 +49,11 @@
 .canvas :global(.react-flow__attribution a) {
   color: inherit;
 }
+
+/* A clicked node keeps keyboard focus, so after any shortcut the browser
+   draws its focus ring around React Flow's wrapper -- a second outline on
+   top of the node's own selection ring (TreeNodeView), which already marks
+   it. */
+.canvas :global(.react-flow__node:focus-visible) {
+  outline: none;
+}

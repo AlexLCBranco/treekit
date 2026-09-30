@@ -50,19 +50,20 @@
   pointer-events: none;
 }
 
-/* The "+" that adds a child. Sits just outside the edge the tree grows
-   from, and only shows on hover or when the node is selected. */
-.addChild {
+/* The round buttons on the side the tree grows from: "+" adds a child, and
+   the one beside it folds the branch. Both show on hover or selection. */
+.nodeButton {
+  --button-half: calc(var(--node-button-size) / 2);
+
   position: absolute;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  min-width: var(--node-button-size);
+  height: var(--node-button-size);
   border-radius: var(--radius-full);
   border: 1px solid var(--border-strong);
   background: var(--surface-raised);
   color: var(--text-secondary);
-  font-size: var(--font-size-lg);
   line-height: 1;
   box-shadow: var(--shadow-sm);
   opacity: 0;
@@ -72,23 +73,57 @@
     transform var(--duration-fast) var(--ease-spring);
 }
 
+.addChild {
+  font-size: var(--font-size-lg);
+}
+
+/* "−" while expanded; the number of hidden nodes while collapsed. Grows
+   sideways for two- and three-digit counts. */
+.collapse {
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.node[data-direction="TB"] .nodeButton {
+  bottom: calc(-1 * var(--button-half));
+}
+
 .node[data-direction="TB"] .addChild {
-  left: calc(50% - 11px);
-  bottom: -11px;
+  left: calc(50% - var(--button-half));
+}
+
+.node[data-direction="TB"] .collapse {
+  left: calc(50% + var(--button-half) + var(--space-1));
+}
+
+.node[data-direction="LR"] .nodeButton {
+  left: calc(100% - var(--button-half));
 }
 
 .node[data-direction="LR"] .addChild {
-  top: calc(50% - 11px);
-  right: -11px;
+  top: calc(50% - var(--button-half));
 }
 
-.node:hover .addChild,
-.node[data-selected] .addChild {
+.node[data-direction="LR"] .collapse {
+  top: calc(50% + var(--button-half) + var(--space-1));
+}
+
+.node:hover .nodeButton,
+.node[data-selected] .nodeButton,
+.node[data-collapsed] .collapse {
   opacity: 1;
   transform: scale(1);
 }
 
-.addChild:hover {
+/* A folded branch stays marked even when the node is not hovered. */
+.node[data-collapsed] .collapse {
+  border-color: var(--node-accent);
+  color: var(--text-primary);
+}
+
+.nodeButton:hover {
   background: var(--node-accent);
   border-color: var(--node-accent);
   color: var(--ink-light);
