@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.7_
+_Last updated: 2026-09-29, v0.0.8_
 
 ## What it is
 
@@ -20,7 +20,8 @@ library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
-TypeScript (tree model and operations, layout, undo history, save format)
+TypeScript (tree model and operations, layout, keyboard navigation, undo history,
+save format)
 with Vitest tests.
 
 ## What works now
@@ -43,6 +44,13 @@ with Vitest tests.
   deleted, is saved that way, and folding is an undo step. If the selected
   node gets folded away, the selection moves to the folded node; expanding
   grows the branch back out of its node
+- Keyboard navigation: arrows move the selection up to the parent, down
+  into a child, or along the whole row (crossing to cousins); in a
+  left-right tree the arrows turn with it. Going down returns to the child
+  you last had selected. With nothing selected, any arrow picks the root
+- The camera follows the selection: if a newly selected or new node would
+  be off-screen (or right at the edge), the canvas glides just far enough
+  to show it, and otherwise stays still
 - Delete: Delete/Backspace removes a node and its branch; Shift+Delete
   removes just the node and moves its children up
 - Undo/redo: header buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y);
@@ -60,7 +68,6 @@ with Vitest tests.
 ## What's next
 
 Rest of the MVP, roughly in this order:
-- Keyboard navigation between nodes; pan to a new node if it lands off-screen
 - Export PNG/SVG; Mermaid flowchart import/export
 
 ## Open problems

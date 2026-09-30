@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 
+import { arrowToMove, moveFrom, type ArrowKey } from "../../domain/navigation";
 import { parentEdgeOf } from "../../domain/tree";
-import { PALETTE_COLORS } from "../../domain/types";
+import { PALETTE_COLORS, type NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -36,7 +37,9 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Ctrl/Cmd+Z                 undo
  *   Ctrl/Cmd+Shift+Z, Ctrl+Y   redo
  * On the selected node:
- *   Tab                        add a child (and start naming it)
+ *   Arrows                     move to the parent, a child, or along the
+ *                              row (any arrow selects the root if nothing is)
+ *   Tab                       add a child (and start naming it)
  *   Enter, F2                  rename
  *   L                          label the line leading into it
  *   Space                      collapse or expand its branch
@@ -52,6 +55,16 @@ function onCanvas(target: EventTarget | null): boolean {
  */
 export function useTreeShortcuts() {
   useEffect(() => {
+    // The child last selected under each parent, so ↓ after ↑ returns to
+    // where you were. Session-only view state; stale entries are harmless
+    // (`moveFrom` ignores a remembered node that is no longer a child).
+    const lastChild = new Map<NodeId, NodeId>();
+    const unsubscribe = useTreeStore.subscribe((s, prev) => {
+      if (!s.selectedId || s.selectedId === prev.selectedId) return;
+      const parent = parentEdgeOf(s.tree, s.selectedId)?.source;
+      if (parent) lastChild.set(parent, s.selectedId);
+    });
+
     function onKeyDown(event: KeyboardEvent) {
       if (isTyping(event.target) || inOverlay(event.target) || event.altKey) return;
       const store = useTreeStore.getState();
@@ -68,8 +81,20 @@ export function useTreeShortcuts() {
         return;
       }
 
+      if (!onCanvas(event.target)) return;
       const { selectedId } = store;
-      if (!selectedId || !onCanvas(event.target)) return;
+
+      if (event.key.startsWith("Arrow") && !event.shiftKey) {
+        // Also stops the page scrolling.
+        event.preventDefault();
+        if (!selectedId) return store.select(store.tree.rootId);
+        const move = arrowToMove(event.key as ArrowKey, store.tree.direction);
+        const target = moveFrom(store.tree, selectedId, move, lastChild.get(selectedId));
+        if (target) store.select(target);
+        return;
+      }
+
+      if (!selectedId) return;
 
       if (key === "tab") {
         event.preventDefault();
@@ -102,6 +127,9 @@ export function useTreeShortcuts() {
       }
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      unsubscribe();
+    };
   }, []);
 }

@@ -5,16 +5,18 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStoreApi,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
+import { revealViewport } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
-import { LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
+import { LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
@@ -43,7 +45,9 @@ function TreeCanvasInner() {
   const selectedId = useTreeStore((s) => s.selectedId);
   const select = useTreeStore((s) => s.select);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
-  const { fitView } = useReactFlow();
+  const { fitView, getViewport, setViewport } = useReactFlow();
+  // React Flow's own store, read (not subscribed to) for the pane's size.
+  const flowStore = useStoreApi();
 
   useTreeShortcuts();
 
@@ -84,11 +88,34 @@ function TreeCanvasInner() {
   // Frame the tree once it first has real sizes, capped at 100% so a lone
   // root is not blown up to fill the screen.
   const didFit = useRef(false);
+  // The selected node the camera last brought into view (see below).
+  const revealedId = useRef<NodeId | null>(null);
   useEffect(() => {
     if (!hasSettled || didFit.current) return;
     didFit.current = true;
+    // The fit shows the whole tree, selection included; revealing it too
+    // would pan from the not-yet-fitted camera and fight the fit.
+    revealedId.current = useTreeStore.getState().selectedId;
     requestAnimationFrame(() => void fitView({ maxZoom: 1, padding: 0.3 }));
   }, [hasSettled, fitView]);
+
+  // Keep the selection in view: when a different node gets selected (arrow
+  // keys, a new child, the selection moving after a delete or undo), pan
+  // just far enough to show it. Only on a *change* of selection, so panning
+  // away from a selected node by hand is not undone by the next re-layout.
+  // Uses the node's target position, not its gliding one, so the camera
+  // heads straight for where the node will end up.
+  useEffect(() => {
+    if (!selectedId) revealedId.current = null;
+    if (!hasSettled || !selectedId || selectedId === revealedId.current) return;
+    revealedId.current = selectedId;
+    const position = targets.get(selectedId);
+    if (!position) return;
+    const { width, height } = flowStore.getState();
+    const size = sizes.get(selectedId) ?? TREE_LAYOUT.fallbackSize;
+    const next = revealViewport(getViewport(), { width, height }, position, size, REVEAL_MARGIN);
+    if (next) void setViewport(next, { duration: REVEAL_PAN_MS });
+  }, [selectedId, hasSettled, targets, sizes, flowStore, getViewport, setViewport]);
 
   const nodes = useMemo<TreeFlowNode[]>(
     () =>

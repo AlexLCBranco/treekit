@@ -32,6 +32,8 @@ const GROUPS: readonly Group[] = [
   {
     title: "With a node selected",
     rows: [
+      { description: "Go to the parent, or into a child (← → in left-right trees)", combos: [["↑"], ["↓"]] },
+      { description: "Go along the row (↑ ↓ in left-right trees)", combos: [["←"], ["→"]] },
       { description: "Add a child", combos: [["Tab"]] },
       { description: "Rename", combos: [["Enter"], ["F2"]] },
       { description: "Label the line leading into it", combos: [["L"]] },
