@@ -121,17 +121,14 @@
   top: calc(50% + var(--button-half) + var(--space-1));
 }
 
-/* A root's trash button sits on the opposite side from "+", where the
-   tree's parent side would be. Only shown when the board has other trees. */
-.node[data-direction="TB"] .trashTree {
+/* Every node's trash button sits on the top edge near the right corner:
+   clear of the incoming line and its label (top centre in a top-down tree,
+   left middle in a left-right one) and of the "+" and fold buttons. */
+.node[data-direction] .delete {
   top: calc(-1 * var(--button-half));
   bottom: auto;
-  left: calc(50% - var(--button-half));
-}
-
-.node[data-direction="LR"] .trashTree {
-  top: calc(50% - var(--button-half));
-  left: calc(-1 * var(--button-half));
+  left: auto;
+  right: var(--space-2);
 }
 
 .node:hover .nodeButton,
@@ -153,7 +150,7 @@
   color: var(--ink-light);
 }
 
-.nodeButton.trashTree:hover {
+.nodeButton.delete:hover {
   background: var(--palette-red);
   border-color: var(--palette-red);
 }

@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.25_
+_Last updated: 2026-09-30, v0.0.26_
 
 ## What it is
 
@@ -50,6 +50,9 @@ with Vitest tests.
   of the row), delete it for good, or empty the trash. It keeps the last 10
   trees and is saved with the board and undoable. The last tree on a board
   can't be deleted. Other nodes are still deleted straight away (undo)
+- Every node has a trash button (top edge, near the right corner, on hover
+  or selection): it deletes the node and its branch, or on a root sends the
+  tree to the trash, just like Delete
 - A root node on a dot-grid page
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
 - Add a child: the "+" on a node, or select it and press Tab

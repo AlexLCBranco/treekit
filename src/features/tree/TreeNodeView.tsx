@@ -17,6 +17,8 @@ export type TreeFlowNode = Node<Record<string, never>, "tree">;
  * One node on the canvas: its title (inline-renamable), and on the side the
  * tree grows towards, a "+" that adds a child and (if it has children) a
  * button that folds the branch. A folded node shows how many nodes it hides.
+ * On its top edge, a trash button deletes the branch (a root sends its whole
+ * tree to the trash instead).
  *
  * Subscribes narrowly: only to its own node record, its child count,
  * whether it is being edited, and the tree's direction. Renaming one node
@@ -28,8 +30,8 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   const node = useTreeStore((s) => s.tree.nodes[nodeId]);
   const isEditing = useTreeStore((s) => s.editingId === nodeId);
   const isRoot = useTreeStore((s) => isRootOf(s.tree, nodeId));
-  // A tree can go to the trash only while it is not the board's last one.
-  const canTrash = useTreeStore((s) => s.tree.roots.length > 1 && isRootOf(s.tree, nodeId));
+  // Every node can be deleted except the root of the board's last tree.
+  const canDelete = useTreeStore((s) => !isRootOf(s.tree, nodeId) || s.tree.roots.length > 1);
   const deleteBranch = useTreeStore((s) => s.deleteBranch);
   const direction = useTreeStore((s) => s.tree.direction);
   const childCount = useTreeStore((s) => s.tree.childEdges[nodeId]?.length ?? 0);
@@ -108,17 +110,17 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
         +
       </button>
 
-      {canTrash && (
+      {canDelete && (
         <button
           type="button"
-          className={`${styles.nodeButton} ${styles.trashTree} nodrag nopan`}
+          className={`${styles.nodeButton} ${styles.delete} nodrag nopan`}
           onClick={(event) => {
             event.stopPropagation();
             deleteBranch(nodeId);
           }}
           onDoubleClick={(event) => event.stopPropagation()}
-          aria-label="Delete tree"
-          title="Delete tree (Del)"
+          aria-label={isRoot ? "Delete tree" : "Delete branch"}
+          title={isRoot ? "Delete tree (Del)" : "Delete branch (Del)"}
         >
           <Trash2 size={12} />
         </button>
