@@ -1,0 +1,50 @@
+.display {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A blank title still needs one line of height. */
+.display:empty::before {
+  content: "\200b";
+}
+
+.placeholder {
+  color: var(--text-muted);
+}
+
+/* Autosize: the textarea and the invisible `::after` share one grid cell,
+   so the mirrored text sets the height and the textarea stretches to it. */
+.autosize {
+  display: grid;
+  width: 100%;
+}
+
+.autosize::after {
+  content: attr(data-value) " ";
+  grid-area: 1 / 1 / 2 / 2;
+  visibility: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.textarea {
+  grid-area: 1 / 1 / 2 / 2;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.textarea::placeholder {
+  color: var(--text-muted);
+}

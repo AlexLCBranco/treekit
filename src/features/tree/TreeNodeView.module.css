@@ -1,0 +1,95 @@
+.node {
+  /* The node's accent: the theme's accent by default, or a palette colour
+     set inline as `--node-accent` (see TreeNodeView). */
+  --node-accent: var(--accent);
+
+  position: relative;
+  min-width: var(--node-min-width);
+  max-width: var(--node-max-width);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-tight);
+  text-align: center;
+  cursor: default;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* The root reads as the tree's heading. */
+.node[data-root] {
+  font-weight: var(--weight-bold);
+  font-size: var(--font-size-lg);
+}
+
+/* A coloured node: a tint of its colour over the surface, with a solid
+   border in that colour. `color-mix` keeps text readable in both themes. */
+.node[data-colored] {
+  border-color: var(--node-accent);
+  background: color-mix(in srgb, var(--node-accent) 22%, var(--surface-raised));
+}
+
+.node[data-selected] {
+  border-color: var(--node-accent);
+  box-shadow:
+    0 0 0 2px var(--focus-ring),
+    var(--shadow-md);
+}
+
+.title {
+  padding: var(--space-1) 0;
+}
+
+.handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The "+" that adds a child. Sits just outside the edge the tree grows
+   from, and only shows on hover or when the node is selected. */
+.addChild {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+.node[data-direction="TB"] .addChild {
+  left: calc(50% - 11px);
+  bottom: -11px;
+}
+
+.node[data-direction="LR"] .addChild {
+  top: calc(50% - 11px);
+  right: -11px;
+}
+
+.node:hover .addChild,
+.node[data-selected] .addChild {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.addChild:hover {
+  background: var(--node-accent);
+  border-color: var(--node-accent);
+  color: var(--ink-light);
+}

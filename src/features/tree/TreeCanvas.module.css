@@ -1,0 +1,51 @@
+/* React Flow ships only structural CSS here (`base.css`); every visual
+   comes from tokens.css through the overrides below. They are `:global`
+   because React Flow owns those class names, and scoped under `.canvas` so
+   they cannot leak anywhere else. */
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-app);
+}
+
+.canvas :global(.react-flow__edge-path) {
+  stroke: var(--edge-stroke);
+  stroke-width: 1.5;
+}
+
+.canvas :global(.react-flow__controls) {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.canvas :global(.react-flow__controls-button) {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+}
+
+.canvas :global(.react-flow__controls-button:hover) {
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+.canvas :global(.react-flow__controls-button svg) {
+  fill: currentColor;
+  max-width: 12px;
+  max-height: 12px;
+}
+
+.canvas :global(.react-flow__attribution) {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.canvas :global(.react-flow__attribution a) {
+  color: inherit;
+}

@@ -1,0 +1,138 @@
+/**
+ * Design tokens: the single source of truth for every visual constant.
+ * Copied from Boardkit so the two stones look like siblings; shared values
+ * keep Boardkit's names.
+ *
+ * Rules:
+ *  - Components never hardcode a colour, radius, duration or spacing value.
+ *  - Anything a user can customise at runtime (node colours) is a custom
+ *    property, so it can be overridden on one element's `style`.
+ */
+
+:root {
+  /* ---- Spacing scale (4px base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* ---- Radii ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* ---- Typography ---- */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --line-tight: 1.25;
+  --line-normal: 1.5;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  /* ---- Motion ---- */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-medium: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Tree layout ----
+     Node width bounds: a node grows with its title up to the max, then
+     wraps. The layout gaps are mirrored as numbers in styles/layout.ts,
+     since dagre runs in JS, not CSS. */
+  --node-min-width: 120px;
+  --node-max-width: 240px;
+
+  /* ---- Stacking order ---- */
+  --z-canvas: 1;
+  --z-sticky: 10;
+  --z-popover: 100;
+
+  /* ---- Customisation palette ----
+     Matches domain/types.ts's PALETTE_COLORS. Constant across light and
+     dark: these identify a node at a glance, so they must not shift. */
+  --palette-slate: #667085;
+  --palette-red: #e03131;
+  --palette-orange: #e8590c;
+  --palette-yellow: #f0b000;
+  --palette-green: #2f9e44;
+  --palette-teal: #0ca678;
+  --palette-blue: #4c6ef5;
+  --palette-purple: #9c36b5;
+
+  --ink-light: #ffffff;
+  --ink-dark: #000000;
+}
+
+/* Dark theme neutrals (the default). */
+:root,
+[data-scheme="dark"] {
+  color-scheme: dark;
+
+  --surface-app: #14161b;
+  --surface-raised: #1d2026;
+  --surface-sunken: #0f1115;
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --surface-active: rgba(255, 255, 255, 0.1);
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text-primary: #e8eaee;
+  --text-secondary: #a3abb9;
+  --text-muted: #737d8c;
+  --text-inverted: #14181f;
+
+  --accent: #748ffc;
+  --accent-hover: #91a7ff;
+  --focus-ring: rgba(116, 143, 252, 0.5);
+
+  /* Canvas: edges and the dot grid. */
+  --edge-stroke: rgba(255, 255, 255, 0.28);
+  --canvas-dots: rgba(255, 255, 255, 0.07);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-lifted: 0 12px 28px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="light"],
+[data-scheme="light"] {
+  color-scheme: light;
+
+  --surface-app: #eef0f4;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e2e6ec;
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --surface-active: rgba(0, 0, 0, 0.09);
+
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.2);
+
+  --text-primary: #1a1d23;
+  --text-secondary: #464e5c;
+  --text-muted: #6a7382;
+  --text-inverted: #ffffff;
+
+  --accent: #3b5bdb;
+  --accent-hover: #364fc7;
+  --focus-ring: rgba(59, 91, 219, 0.4);
+
+  --edge-stroke: rgba(0, 0, 0, 0.3);
+  --canvas-dots: rgba(0, 0, 0, 0.09);
+
+  --shadow-sm: 0 1px 2px rgba(20, 30, 50, 0.14);
+  --shadow-md: 0 2px 6px rgba(20, 30, 50, 0.18);
+  --shadow-lifted: 0 12px 28px rgba(20, 30, 50, 0.28);
+}
