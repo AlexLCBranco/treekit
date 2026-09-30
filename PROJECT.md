@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.16_
+_Last updated: 2026-09-30, v0.0.17_
 
 ## What it is
 
@@ -26,6 +26,10 @@ with Vitest tests.
 
 ## What works now
 
+- Cursor tools at the bottom of the canvas, like Excalidraw's presentation
+  mode: hand (drag pans, even from a node; nothing gets selected), select
+  (the default) and laser (drag leaves a fading red trail). Keys H, V, K;
+  the tool is not remembered across visits
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
 - Several trees on one board: double-click empty canvas to start another
   tree, its first node centred where you clicked (and open for naming). Each
