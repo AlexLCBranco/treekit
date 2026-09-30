@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alignViewport, arrowToMove, moveFrom } from "./navigation";
+import { arrowToMove, moveFrom, placeOnPage, scrollToReveal } from "./navigation";
 import { addChild, createTree, setCollapsed } from "./tree";
 import type { NodeId, TreeState } from "./types";
 
@@ -87,24 +87,39 @@ describe("moveFrom", () => {
   });
 });
 
-describe("alignViewport", () => {
+describe("placeOnPage", () => {
   const screen = { width: 800, height: 600 };
   const bounds = { x: -200, y: 10, width: 400, height: 300 };
   const at = (x: "start" | "center" | "end", y: "start" | "center" | "end") =>
-    alignViewport(bounds, screen, { x, y }, 40, 1);
+    placeOnPage(bounds, screen, { x, y }, 40);
 
-  it("puts the tree against the chosen edges, margin in", () => {
-    expect(at("start", "start")).toEqual({ x: 240, y: 30, zoom: 1 });
-    expect(at("end", "end")).toEqual({ x: 560, y: 250, zoom: 1 });
+  it("uses the screen as the page when the tree fits, tree against the chosen edges", () => {
+    expect(at("start", "start")).toEqual({ width: 800, height: 600, x: 240, y: 30 });
+    expect(at("end", "end")).toEqual({ width: 800, height: 600, x: 560, y: 250 });
   });
 
   it("centres on either axis", () => {
-    expect(at("center", "center")).toEqual({ x: 400, y: 140, zoom: 1 });
+    expect(at("center", "center")).toEqual({ width: 800, height: 600, x: 400, y: 140 });
   });
 
-  it("zooms out just enough for a big tree to fit", () => {
-    const vp = alignViewport({ x: 0, y: 0, width: 1440, height: 100 }, screen, { x: "start", y: "start" }, 40, 1);
-    expect(vp.zoom).toBeCloseTo(0.5);
-    expect(vp.x).toBe(40);
+  it("grows the page (never zooms) on an axis where a big tree does not fit", () => {
+    const page = placeOnPage({ x: 0, y: 0, width: 1440, height: 100 }, screen, { x: "center", y: "start" }, 40);
+    expect(page).toEqual({ width: 1520, height: 600, x: 40, y: 40 });
+  });
+});
+
+describe("scrollToReveal", () => {
+  const view = { left: 100, top: 100, width: 400, height: 300 };
+
+  it("stays put when the target is already in view", () => {
+    expect(scrollToReveal({ x: 200, y: 200, width: 50, height: 50 }, view, 10)).toEqual({ left: 100, top: 100 });
+  });
+
+  it("scrolls just far enough, margin included", () => {
+    expect(scrollToReveal({ x: 480, y: 50, width: 50, height: 20 }, view, 10)).toEqual({ left: 140, top: 40 });
+  });
+
+  it("lines up a target bigger than the view with its start, never below 0", () => {
+    expect(scrollToReveal({ x: 5, y: 300, width: 900, height: 20 }, view, 10)).toEqual({ left: 0, top: 100 });
   });
 });

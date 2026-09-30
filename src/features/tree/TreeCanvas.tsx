@@ -4,14 +4,13 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  useStore,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
-import { alignViewport } from "../../domain/navigation";
+import { placeOnPage, scrollToReveal } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { selectionOf, useTreeStore } from "../../store/treeStore";
@@ -32,8 +31,8 @@ const nodeTypes = { tree: TreeNodeView };
 const edgeTypes = { tree: TreeEdgeView };
 
 /**
- * The tree on a fixed, one-screen page: no panning or zooming. The camera
- * is locked and refits the whole tree to the screen after every change.
+ * The trees on a page like Boardkit's: no panning or zooming, always at 100%.
+ * The page is the size of the screen and scrolls natively where it is bigger.
  *
  * Data flow, one direction only:
  *   store tree -> tidy-tree layout (+ measured node sizes) -> glide animation
@@ -57,9 +56,6 @@ function TreeCanvasInner() {
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
   const tool = useViewStore((s) => s.tool);
   const { setViewport, screenToFlowPosition } = useReactFlow();
-  // The pane's size, so the tree refits when the window is resized.
-  const paneWidth = useStore((s) => s.width);
-  const paneHeight = useStore((s) => s.height);
 
   useTreeShortcuts();
 
@@ -97,14 +93,31 @@ function TreeCanvasInner() {
   const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
   const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
 
-  // Put the whole tree on the page as the Align panel says, never zoomed in
-  // past 100%, shrunk only as far as needed to fit. Runs after every change
-  // (edit, direction, alignment, window size), so the page never scrolls.
-  const alignment = useViewStore((s) => s.alignment);
-  const applied = useViewStore((s) => s.applied);
-  const didFit = useRef(false);
+  // The visible part of the page (the scroll container minus its
+  // scrollbars), measured by hand: React Flow now measures the whole page.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [screen, setScreen] = useState<Size | null>(null);
   useEffect(() => {
-    if (!hasSettled || paneWidth === 0 || paneHeight === 0) return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const observer = new ResizeObserver(() =>
+      setScreen((prev) =>
+        prev && prev.width === scroller.clientWidth && prev.height === scroller.clientHeight
+          ? prev
+          : { width: scroller.clientWidth, height: scroller.clientHeight },
+      ),
+    );
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
+
+  // The page, as in Boardkit: the tree at 100%, placed as the Align panel
+  // says. The page is the screen's size, and grows (scrollbars appear) only
+  // where the tree does not fit. Recomputed after every change (edit,
+  // direction, alignment, window size).
+  const alignment = useViewStore((s) => s.alignment);
+  const page = useMemo(() => {
+    if (!hasSettled || !screen || screen.width === 0 || screen.height === 0) return null;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -116,16 +129,41 @@ function TreeCanvasInner() {
       maxX = Math.max(maxX, p.x + size.width);
       maxY = Math.max(maxY, p.y + size.height);
     }
-    if (minX === Infinity) return;
+    if (minX === Infinity) return null;
     const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    const view = alignViewport(bounds, { width: paneWidth, height: paneHeight }, alignment, FRAME_MARGIN, 1);
-    // The first fit snaps (after a frame, so React Flow has its size); the
-    // rest glide together with the nodes.
-    const first = !didFit.current;
-    didFit.current = true;
+    return placeOnPage(bounds, screen, alignment, FRAME_MARGIN);
+  }, [hasSettled, screen, targets, sizes, alignment]);
+
+  // Move the tree onto the page. The first placement snaps (after a frame,
+  // so React Flow has its size); the rest glide together with the nodes.
+  const didPlace = useRef(false);
+  useEffect(() => {
+    if (!page) return;
+    const view = { x: page.x, y: page.y, zoom: 1 };
+    const first = !didPlace.current;
+    didPlace.current = true;
     if (first) requestAnimationFrame(() => void setViewport(view, { duration: 0 }));
     else void setViewport(view, { duration: FRAME_PAN_MS });
-  }, [hasSettled, targets, sizes, alignment, applied, paneWidth, paneHeight, setViewport]);
+  }, [page, setViewport]);
+
+  // Keep the selected node on screen when the page scrolls: arrow keys, a
+  // new child or a rename can land it past the edge. Not while a marquee
+  // picks a group (scrolling mid-drag would shift the box under the mouse).
+  const groupSize = selectedIds.length;
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const p = selectedId ? targets.get(selectedId) : undefined;
+    if (!scroller || !page || !selectedId || !p || groupSize > 1) return;
+    const size = sizes.get(selectedId) ?? TREE_LAYOUT.fallbackSize;
+    const view = {
+      left: scroller.scrollLeft,
+      top: scroller.scrollTop,
+      width: scroller.clientWidth,
+      height: scroller.clientHeight,
+    };
+    const to = scrollToReveal({ x: p.x + page.x, y: p.y + page.y, ...size }, view, FRAME_MARGIN / 2);
+    if (to.left !== view.left || to.top !== view.top) scroller.scrollTo({ ...to, behavior: "smooth" });
+  }, [selectedId, groupSize, targets, sizes, page]);
 
   const nodes = useMemo<TreeFlowNode[]>(
     () =>
@@ -218,44 +256,52 @@ function TreeCanvasInner() {
   return (
     <NodeContextMenu>
       <div className={styles.canvas} data-tool={tool}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onNodeClick={(_, node) => select(node.id as NodeId)}
-          onEdgeClick={(_, edge) => select(edge.target as NodeId)}
-          onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
-          onPaneClick={() => select(null)}
-          onDoubleClick={onCanvasDoubleClick}
-          // Drag means: draw a marquee (select) or laser. Nothing pans.
-          panOnDrag={false}
-          selectionOnDrag={tool === "select"}
-          nodesConnectable={false}
-          nodesDraggable={false}
-          // Double-click renames a node; zooming on it would fight that.
-          zoomOnDoubleClick={false}
-          // The camera is locked: the tree is fitted to the screen instead.
-          panOnScroll={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
-          preventScrolling={false}
-          // Tab is "add child" here, not React Flow's focus-cycling.
-          disableKeyboardA11y
-          // Space is "collapse/expand" here. React Flow would otherwise use
-          // holding Space as "drag to pan", which plain drag already does.
-          panActivationKeyCode={null}
-          deleteKeyCode={null}
-          minZoom={0.01}
-          maxZoom={1}
-          // Bottom-right belongs to the version badge.
-          attributionPosition="top-right"
-        >
-          <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
-          <ToolPicker />
-          {tool === "laser" && <LaserTrail />}
-        </ReactFlow>
+        <div ref={scrollerRef} className={styles.scroller}>
+          <div className={styles.page} style={page ? { width: page.width, height: page.height } : undefined}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onNodeClick={(_, node) => select(node.id as NodeId)}
+              onEdgeClick={(_, edge) => select(edge.target as NodeId)}
+              onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
+              onPaneClick={() => select(null)}
+              onDoubleClick={onCanvasDoubleClick}
+              // Drag means: draw a marquee (select) or laser. Nothing pans.
+              panOnDrag={false}
+              selectionOnDrag={tool === "select"}
+              // React Flow would slide the camera when a marquee nears the
+              // edge; here the camera never moves, the page scrolls instead.
+              autoPanOnSelection={false}
+              nodesConnectable={false}
+              nodesDraggable={false}
+              // Double-click renames a node; zooming on it would fight that.
+              zoomOnDoubleClick={false}
+              // The camera is locked; the wheel scrolls the page natively.
+              panOnScroll={false}
+              zoomOnScroll={false}
+              zoomOnPinch={false}
+              preventScrolling={false}
+              // Tab is "add child" here, not React Flow's focus-cycling.
+              disableKeyboardA11y
+              // Space is "collapse/expand" here. React Flow would otherwise use
+              // holding Space as "drag to pan", which plain drag already does.
+              panActivationKeyCode={null}
+              deleteKeyCode={null}
+              minZoom={1}
+              maxZoom={1}
+              // Bottom-right belongs to the version badge.
+              attributionPosition="top-right"
+            >
+              <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
+            </ReactFlow>
+          </div>
+        </div>
+        {/* Outside the scrolling page, so they stay put on the screen. */}
+        <ToolPicker />
+        {tool === "laser" && <LaserTrail />}
       </div>
     </NodeContextMenu>
   );

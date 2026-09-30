@@ -1,4 +1,10 @@
+/* Pinned to the bottom centre of the screen, over the scrolling page. */
 .panel {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   gap: var(--space-1);

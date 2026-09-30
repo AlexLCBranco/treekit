@@ -97,40 +97,64 @@ function rowOf(state: TreeState, nodeId: NodeId): NodeId[] {
   return nodeIds.filter((id) => depth.get(id) === target && rootOf.get(id) === root);
 }
 
-/** The camera, as React Flow describes it: screen = flow * zoom + (x, y). */
-export interface Viewport {
-  readonly x: number;
-  readonly y: number;
-  readonly zoom: number;
-}
-
 export interface Rect extends Point, Size {}
 
 /** Start / middle / end of an axis: left-centre-right, or top-middle-bottom. */
 export type Align = "start" | "center" | "end";
 
 /**
- * The camera that puts a rectangle (the whole tree) against the page:
- * flush to the left / centred / flush to the right, and independently to the
- * top / middle / bottom, always `margin` pixels in from the edge. Zooms out
- * (never in past `maxZoom`) only as far as needed for it all to fit.
+ * The page the trees are drawn on, like Boardkit's board: the size of the
+ * screen, and bigger (so it scrolls) only on an axis where the trees plus
+ * `margin` on each side do not fit. `x`/`y` move the trees onto the page:
+ * flush to the start / centred / flush to the end of each axis, `margin` in
+ * from the edge. Never zoomed: the tree is always drawn at 100%.
  */
-export function alignViewport(
+export interface PagePlacement {
+  readonly width: number;
+  readonly height: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+export function placeOnPage(
   bounds: Rect,
   screen: Size,
   align: { x: Align; y: Align },
   margin: number,
-  maxZoom: number,
-): Viewport {
-  const fit = Math.min((screen.width - 2 * margin) / bounds.width, (screen.height - 2 * margin) / bounds.height);
-  const zoom = Math.max(0.01, Math.min(maxZoom, fit));
-  const place = (start: number, size: number, room: number, a: Align) => {
-    const free = room - size * zoom - 2 * margin;
-    return margin + (a === "start" ? 0 : a === "center" ? free / 2 : free) - start * zoom;
+): PagePlacement {
+  const axis = (start: number, size: number, room: number, a: Align) => {
+    const page = Math.max(room, size + 2 * margin);
+    const free = page - size - 2 * margin;
+    return { page, offset: margin + (a === "start" ? 0 : a === "center" ? free / 2 : free) - start };
+  };
+  const x = axis(bounds.x, bounds.width, screen.width, align.x);
+  const y = axis(bounds.y, bounds.height, screen.height, align.y);
+  return { width: x.page, height: y.page, x: x.offset, y: y.offset };
+}
+
+/** The part of the page currently scrolled into view, in page pixels. */
+export interface ScrollView {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The smallest scroll that brings `target` (in page pixels), plus `margin`
+ * around it, into view. Stays put if it is already visible; a target bigger
+ * than the view lines up with its start.
+ */
+export function scrollToReveal(target: Rect, view: ScrollView, margin: number): { left: number; top: number } {
+  const axis = (start: number, size: number, scroll: number, room: number) => {
+    const lo = start - margin;
+    const hi = start + size + margin;
+    if (hi - lo > room || lo < scroll) return Math.max(0, lo);
+    if (hi > scroll + room) return hi - room;
+    return scroll;
   };
   return {
-    x: place(bounds.x, bounds.width, screen.width, align.x),
-    y: place(bounds.y, bounds.height, screen.height, align.y),
-    zoom,
+    left: axis(target.x, target.width, view.left, view.width),
+    top: axis(target.y, target.height, view.top, view.height),
   };
 }

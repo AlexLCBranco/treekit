@@ -3,11 +3,29 @@
    because React Flow owns those class names, and scoped under `.canvas` so
    they cannot leak anywhere else. */
 
+/* The screen: holds the scrolling page, plus the cursor tools and laser
+   that stay put over it. */
 .canvas {
+  position: relative;
   width: 100%;
   height: 100%;
   background: var(--surface-app);
-  overflow: clip;
+  overflow: hidden;
+}
+
+/* Scrolls natively, like Boardkit's board, when the page is bigger. */
+.scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+/* Sized by TreeCanvas to the screen, or to the trees where they are bigger;
+   React Flow fills it. */
+.page {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 /* Dragging a marquee past the edge makes the browser auto-scroll React

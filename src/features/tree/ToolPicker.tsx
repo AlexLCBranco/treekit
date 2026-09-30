@@ -1,4 +1,3 @@
-import { Panel } from "@xyflow/react";
 import { Crosshair, MousePointer2, type LucideIcon } from "lucide-react";
 
 import { useViewStore, type Tool } from "../../store/viewStore";
@@ -15,7 +14,7 @@ export function ToolPicker() {
   const setTool = useViewStore((s) => s.setTool);
 
   return (
-    <Panel position="bottom-center" className={styles.panel} role="radiogroup" aria-label="Cursor tool">
+    <div className={styles.panel} role="radiogroup" aria-label="Cursor tool">
       {TOOLS.map(({ value, label, key, Icon }) => (
         <button
           key={value}
@@ -30,6 +29,6 @@ export function ToolPicker() {
           <Icon size={16} />
         </button>
       ))}
-    </Panel>
+    </div>
   );
 }

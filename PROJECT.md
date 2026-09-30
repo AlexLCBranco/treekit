@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.22_
+_Last updated: 2026-09-30, v0.0.23_
 
 ## What it is
 
@@ -15,7 +15,7 @@ now: accounts, backend, cloud sync, collaboration, AI, mobile.
 ## Stack
 
 Vite, React 19, TypeScript (strict), Zustand, React Flow (`@xyflow/react`)
-as the renderer (camera locked), a small hand-written tidy-tree layout (no layout
+as the renderer (camera locked, the page scrolls natively), a small hand-written tidy-tree layout (no layout
 library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
@@ -26,10 +26,11 @@ with Vitest tests.
 
 ## What works now
 
-- One fixed page, no infinite canvas: no pan, no zoom. The whole tree is
-  always fitted to the screen (shrunk only if it would not fit, never
-  enlarged past 100%) and refits after every edit, direction change and
-  window resize
+- One page, like Boardkit's board, no infinite canvas: no pan, no zoom,
+  the tree always at 100%. The page is the size of the screen; when the
+  trees need more room it grows and scrollbars appear (wheel or drag the
+  handle). The selected node is scrolled into view (arrows, new child).
+  A marquee dragged to the edge never moves the page
 - Cursor tools at the bottom of the page: select (the default) and laser
   (drag leaves a fading red trail). Keys V, K; the tool is not remembered
   across visits

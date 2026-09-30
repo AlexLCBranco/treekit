@@ -90,3 +90,32 @@ textarea {
   --color-ring: var(--focus-ring);
   --radius: var(--radius-md);
 }
+
+/* Native scrollbars (the page scrolls when a tree is bigger than the
+   screen) default to the OS light theme, which clashes with the dark
+   surfaces. Styled from the tokens, as in Boardkit. */
+* {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+  background-clip: padding-box;
+}
