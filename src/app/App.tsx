@@ -1,6 +1,6 @@
 import { DirectionToggle } from "../features/tree/DirectionToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
-import { ShortcutHint } from "../features/tree/ShortcutHint";
+import { ShortcutsDialog } from "../features/tree/ShortcutsDialog";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
 import { TreeSwitcher } from "../features/trees/TreeSwitcher";
 import { useTreeStore } from "../store/treeStore";
@@ -21,7 +21,7 @@ export function App() {
         <HistoryButtons />
         <DirectionToggle />
         <div className={styles.spacer} />
-        <ShortcutHint />
+        <ShortcutsDialog />
       </header>
       <main className={styles.main}>
         {/* Keyed by tree: switching trees remounts the canvas, so measured

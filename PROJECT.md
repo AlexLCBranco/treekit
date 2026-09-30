@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-29, v0.0.4_
+_Last updated: 2026-09-29, v0.0.5_
 
 ## What it is
 
@@ -45,7 +45,8 @@ with Vitest tests.
 - Multiple trees: the tree's name in the header (click to rename) and a
   menu to switch trees, start a new one, duplicate or delete this one
   (with a confirm); each tree keeps its own undo history for the session
-- A shortcut hint in the header that changes with what is selected
+- A keyboard button in the header (or press ?) opens a list of every
+  shortcut and mouse gesture, like Boardkit's
 
 ## What's next
 
