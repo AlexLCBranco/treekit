@@ -2,6 +2,7 @@ import type {
   EdgeId,
   LayoutDirection,
   NodeId,
+  NodeStatus,
   PaletteColor,
   TreeDoc,
   TreeEdge,
@@ -10,7 +11,7 @@ import type {
   TreeNode,
   TreeState,
 } from "./types";
-import { PALETTE_COLORS } from "./types";
+import { NODE_STATUSES, PALETTE_COLORS } from "./types";
 
 /**
  * The saved shape of a tree, and how to read it back safely. Pure: where it
@@ -20,13 +21,15 @@ import { PALETTE_COLORS } from "./types";
  * anything to migrate, because that is the only moment adding one is free
  * (same reasoning as Boardkit).
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * Version 1 had a single `rootId`; version 2 has `roots` (and `trash`);
- * version 3 adds `notes` to every node. `readTree` still reads the older
- * ones, so they open unchanged: version 1's root becomes the only entry of
- * `roots`, and nodes from before version 3 get empty notes. (Roots saved
+ * version 3 adds `notes` to every node; version 4 adds each node's `status`
+ * and the board's `hideCut`. `readTree` still reads the older ones, so they
+ * open unchanged: version 1's root becomes the only entry of `roots`, nodes
+ * from before version 3 get empty notes, and from before version 4 no
+ * status, with cut branches shown. (Roots saved
  * briefly as `{ id, x, y }` objects are read too; the position is ignored,
  * since trees now line up side by side.)
  */
@@ -36,12 +39,12 @@ export interface PersistedTree {
 }
 
 export function serializeTree(doc: TreeDoc): PersistedTree {
-  const { roots, trash, nodes, edges, childEdges, direction } = doc.state;
+  const { roots, trash, nodes, edges, childEdges, direction, hideCut } = doc.state;
   // Copies out exactly the content fields, so nothing else that happens to
   // ride along on the object can leak into storage.
   return {
     version: SCHEMA_VERSION,
-    doc: { id: doc.id, name: doc.name, state: { roots, trash, nodes, edges, childEdges, direction } },
+    doc: { id: doc.id, name: doc.name, state: { roots, trash, nodes, edges, childEdges, direction, hideCut } },
   };
 }
 
@@ -105,8 +108,14 @@ export function readTree(data: unknown): TreeRead {
     // Missing before version 3: that is a migration, not damage.
     const notes =
       typeof raw.notes === "string" ? raw.notes : version < 3 && raw.notes === undefined ? "" : fix("");
+    const status =
+      raw.status === null || NODE_STATUSES.includes(raw.status as NodeStatus)
+        ? (raw.status as NodeStatus | null)
+        : version < 4 && raw.status === undefined
+          ? null
+          : fix(null);
     if (raw.id !== key) fix(null);
-    nodes[id] = { id, title, color, collapsed, notes };
+    nodes[id] = { id, title, color, collapsed, notes, status };
   }
 
   // Roots: the saved ones that exist (once each), or version 1's single one.
@@ -214,7 +223,14 @@ export function readTree(data: unknown): TreeRead {
     state.direction === "TB" || state.direction === "LR" ? state.direction : fix("TB");
   const name = typeof doc.name === "string" && doc.name ? doc.name : fix("Untitled tree");
 
-  const tree: TreeState = { roots, trash, nodes, edges, childEdges, direction };
+  const hideCut =
+    typeof state.hideCut === "boolean"
+      ? state.hideCut
+      : version < 4 && state.hideCut === undefined
+        ? false
+        : fix(false);
+
+  const tree: TreeState = { roots, trash, nodes, edges, childEdges, direction, hideCut };
   const result: TreeDoc = { id: doc.id as TreeId, name, state: tree };
   return fixes === 0 ? { status: "ok", doc: result } : { status: "repaired", doc: result, fixes };
 }

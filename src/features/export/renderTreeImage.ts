@@ -1,11 +1,16 @@
 import { getSmoothStepPath, Position } from "@xyflow/react";
 import { toPng, toSvg } from "html-to-image";
+import type { LucideIcon } from "lucide-react";
+import { createElement } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 
 import inlineStyles from "../../components/InlineEditable.module.css";
 import { layoutTree, type Size } from "../../domain/layout";
-import { expandAll, isRoot, visibleSubtree } from "../../domain/tree";
+import { cutNodeIds, expandAll, isRoot, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId, TreeState } from "../../domain/types";
 import { TREE_LAYOUT } from "../tree/layoutConfig";
+import { STATUS_META } from "../tree/statusMeta";
 import edgeStyles from "../tree/TreeEdgeView.module.css";
 import nodeStyles from "../tree/TreeNodeView.module.css";
 
@@ -15,8 +20,21 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 export type ImageFormat = "png" | "svg";
 
+/** A lucide icon as a plain SVG element, drawn once by React and copied
+    out, since the image is built from plain DOM. */
+function iconElement(icon: LucideIcon): Element {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  flushSync(() => root.render(createElement(icon, { size: 10, strokeWidth: 2.5, "aria-hidden": true })));
+  const svg = host.firstElementChild!.cloneNode(true) as Element;
+  root.unmount();
+  return svg;
+}
+
 /**
  * Draws the whole tree (folded branches unfolded) as a PNG or SVG data URL.
+ * Cut branches follow the "Hide cut branches" toggle: left out while it is
+ * on, greyed out (with dashed lines) as on screen while it is off.
  *
  * The canvas can't be snapshotted directly: it shows only what is on screen
  * and folded branches are not in the page at all. So this builds a clean
@@ -30,6 +48,7 @@ export type ImageFormat = "png" | "svg";
 export async function renderTreeImage(tree: TreeState, format: ImageFormat): Promise<string> {
   const full = expandAll(tree);
   const { nodeIds, edgeIds } = visibleSubtree(full);
+  const cut = cutNodeIds(full);
   const vertical = full.direction === "TB";
 
   const stage = document.createElement("div");
@@ -50,11 +69,19 @@ export async function renderTreeImage(tree: TreeState, format: ImageFormat): Pro
         el.dataset.colored = "true";
         el.style.setProperty("--node-accent", `var(--palette-${node.color})`);
       }
+      if (cut.has(id)) el.dataset.cut = "";
       el.style.position = "absolute";
       const title = document.createElement("span");
       title.className = `${inlineStyles.display} ${nodeStyles.title}`;
       title.textContent = node.title || "Untitled";
       el.append(title);
+      if (node.status) {
+        const badge = document.createElement("span");
+        badge.className = `${nodeStyles.badge} ${nodeStyles.statusBadge}`;
+        badge.dataset.status = node.status;
+        badge.append(iconElement(STATUS_META[node.status].icon));
+        el.append(badge);
+      }
       stage.append(el);
       nodeEls.set(id, el);
     }
@@ -64,6 +91,7 @@ export async function renderTreeImage(tree: TreeState, format: ImageFormat): Pro
       if (!label) continue;
       const el = document.createElement("div");
       el.className = edgeStyles.label;
+      if (cut.has(full.edges[edgeId].target)) el.dataset.cut = "";
       el.textContent = label;
       stage.append(el);
       labelEls.set(edgeId, el);
@@ -151,6 +179,10 @@ export async function renderTreeImage(tree: TreeState, format: ImageFormat): Pro
       path.setAttribute("fill", "none");
       path.style.stroke = "var(--edge-stroke)";
       path.style.strokeWidth = "1";
+      if (cut.has(target)) {
+        path.style.strokeDasharray = "var(--cut-dash)";
+        path.style.opacity = "calc(1 - var(--cut-veil))";
+      }
       svg.append(path);
 
       const labelEl = labelEls.get(edgeId);

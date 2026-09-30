@@ -1,12 +1,22 @@
 import { createEdgeId, createNodeId } from "./ids";
-import { PALETTE_COLORS, type EdgeId, type NodeId, type PaletteColor, type TreeState } from "./types";
+import {
+  NODE_STATUSES,
+  PALETTE_COLORS,
+  type EdgeId,
+  type NodeId,
+  type NodeStatus,
+  type PaletteColor,
+  type TreeState,
+} from "./types";
 
 /**
  * Mermaid `flowchart` <-> tree. Pure text in, text or tree out.
  *
  * Export writes every node (folded branches included, and every tree on the board), the edge labels, the
  * direction, the node colours and the notes. Notes go in `%% notes` comment
- * lines, which Mermaid ignores and import reads back. Import understands the common flowchart
+ * lines, which Mermaid ignores and import reads back. Statuses become the
+ * classes `keep`, `maybe` and `cut` (`classDef` + `class`), which import
+ * reads back from `class` lines or the `A:::cut` shorthand. Import understands the common flowchart
  * subset -- nodes with any bracket shape, `-->` / `---` / `==>` / `-.->`
  * links with `|label|` or `-- label -->` text, chains (`A --> B --> C`) and
  * `&` lists -- and refuses what a tree cannot hold (two parents, loops,
@@ -54,6 +64,24 @@ function escapeText(text: string): string {
     .replace(/\r?\n/g, "<br/>");
 }
 
+/**
+ * How each status looks in Mermaid's own renderer. Import only reads the
+ * class names, never these styles.
+ */
+const STATUS_STYLE: Readonly<Record<NodeStatus, string>> = {
+  keep: "stroke-width:3px",
+  maybe: "stroke-dasharray:3 3",
+  cut: "opacity:0.45,stroke-dasharray:6 4",
+};
+
+const CLASS_SHORTHAND = /:::([\p{L}\p{N}_-]+)/uy;
+
+/** A class name that is one of the statuses, else `null`. */
+function asStatus(name: string | null): NodeStatus | null {
+  const lower = name?.toLowerCase();
+  return NODE_STATUSES.find((status) => status === lower) ?? null;
+}
+
 /** The comment line that carries a node's notes: `%% notes n3 "text"`. */
 const NOTES_LINE = /^%%\s*notes\s+([\p{L}\p{N}_]+)\s+"(.*)"\s*$/u;
 
@@ -92,6 +120,12 @@ export function toMermaid(state: TreeState): string {
   for (const nodeId of order) {
     const notes = state.nodes[nodeId].notes;
     if (notes) lines.push(`    %% notes ${ids.get(nodeId)} "${escapeText(notes)}"`);
+  }
+  for (const status of NODE_STATUSES) {
+    const marked = order.filter((nodeId) => state.nodes[nodeId].status === status);
+    if (marked.length === 0) continue;
+    lines.push(`    classDef ${status} ${STATUS_STYLE[status]}`);
+    lines.push(`    class ${marked.map((nodeId) => ids.get(nodeId)).join(",")} ${status}`);
   }
   return lines.join("\n") + "\n";
 }
@@ -154,8 +188,25 @@ function sticky(re: RegExp, c: Cursor): RegExpExecArray | null {
   return re.exec(c.s);
 }
 
-/** Parses `id`, `id[text]`, `id("text")`, ... and returns the id and text. */
-function parseNode(c: Cursor): { id: string; title: string | null } {
+/** A node as written in a statement. */
+interface NodeRef {
+  readonly id: string;
+  readonly title: string | null;
+  /** From the `id:::name` shorthand. */
+  readonly className: string | null;
+}
+
+/** Parses `id`, `id[text]`, `id("text")`, ..., each maybe followed by
+    `:::class`, and returns the id, text and class. */
+function parseNode(c: Cursor): NodeRef {
+  const ref = parseNodeShape(c);
+  const shorthand = sticky(CLASS_SHORTHAND, c);
+  if (!shorthand) return { ...ref, className: null };
+  c.i += shorthand[0].length;
+  return { ...ref, className: shorthand[1] };
+}
+
+function parseNodeShape(c: Cursor): { id: string; title: string | null } {
   skipSpace(c);
   const match = sticky(NODE_ID, c);
   if (!match) throw new ImportError(`Couldn't read this part: “${c.s.slice(c.i, c.i + 20)}”`);
@@ -187,7 +238,7 @@ function parseNode(c: Cursor): { id: string; title: string | null } {
 }
 
 /** One or more nodes joined by `&`. */
-function parseNodeList(c: Cursor): { id: string; title: string | null }[] {
+function parseNodeList(c: Cursor): NodeRef[] {
   const list = [parseNode(c)];
   for (;;) {
     skipSpace(c);
@@ -218,14 +269,17 @@ interface Draft {
   readonly edges: { source: string; target: string; label: string }[];
   readonly colors: Map<string, PaletteColor>;
   readonly notes: Map<string, string>;
+  readonly statuses: Map<string, NodeStatus>;
 }
 
 function parseStatement(statement: string, draft: Draft) {
   const c: Cursor = { s: statement, i: 0 };
-  const remember = (nodes: { id: string; title: string | null }[]) => {
-    for (const { id, title } of nodes) {
+  const remember = (nodes: NodeRef[]) => {
+    for (const { id, title, className } of nodes) {
       if (title !== null) draft.titles.set(id, title);
       else if (!draft.titles.has(id)) draft.titles.set(id, id);
+      const status = asStatus(className);
+      if (status) draft.statuses.set(id, status);
     }
   };
 
@@ -292,7 +346,7 @@ function parse(text: string): TreeState {
   }
   const direction = /^(LR|RL)$/i.test(header[1] ?? "") ? "LR" : "TB";
 
-  const draft: Draft = { titles: new Map(), edges: [], colors: new Map(), notes };
+  const draft: Draft = { titles: new Map(), edges: [], colors: new Map(), notes, statuses: new Map() };
   for (const statement of statements.slice(1)) {
     const keyword = /^(\w+)\b/.exec(statement)?.[1]?.toLowerCase();
     if (keyword === "subgraph") throw new ImportError("Subgraphs aren't supported yet.");
@@ -300,9 +354,14 @@ function parse(text: string): TreeState {
       const parts = /^style\s+(\S+)\s+(.+)$/i.exec(statement);
       const color = parts && colorFromStyle(parts[2]);
       if (parts && color) draft.colors.set(parts[1], color);
+    } else if (keyword === "class") {
+      // `class a,b cut`: only the three status classes mean anything here.
+      const parts = /^class\s+(\S+)\s+(\S+)$/i.exec(statement);
+      const status = parts && asStatus(parts[2]);
+      if (parts && status) for (const id of parts[1].split(",")) draft.statuses.set(id.trim(), status);
     } else if (
       keyword &&
-      ["classdef", "class", "linkstyle", "click", "direction", "end", "acctitle", "accdescr"].includes(keyword)
+      ["classdef", "linkstyle", "click", "direction", "end", "acctitle", "accdescr"].includes(keyword)
     ) {
       continue; // Styling and interaction: nothing a tree keeps.
     } else parseStatement(statement, draft);
@@ -352,6 +411,7 @@ function parse(text: string): TreeState {
       color: draft.colors.get(key) ?? null,
       collapsed: false,
       notes: draft.notes.get(key) ?? "",
+      status: draft.statuses.get(key) ?? null,
     };
     state.childEdges[nodeId] = [];
     for (const edge of outgoing.get(key) ?? []) {
@@ -367,5 +427,5 @@ function parse(text: string): TreeState {
     const lost = [...draft.titles.keys()].find((id) => !nodeIds.has(id))!;
     throw new ImportError(`${name(lost)} is part of a loop that never connects to the start; a tree can't loop.`);
   }
-  return { roots: [rootId], trash: [], ...state, direction };
+  return { roots: [rootId], trash: [], ...state, direction, hideCut: false };
 }

@@ -11,7 +11,7 @@ import { memo, useCallback } from "react";
 import { InlineEditable } from "../../components/InlineEditable";
 import type { EdgeRoute, Size } from "../../domain/layout";
 import type { EdgeId } from "../../domain/types";
-import { useTreeStore } from "../../store/treeStore";
+import { cutIdsOf, useTreeStore } from "../../store/treeStore";
 import styles from "./TreeEdgeView.module.css";
 
 export interface TreeEdgeData extends Record<string, unknown> {
@@ -35,8 +35,11 @@ export type TreeFlowEdge = Edge<TreeEdgeData, "tree">;
  * label. The label is HTML, rendered by React Flow's `EdgeLabelRenderer`
  * in a layer above the SVG edges, so it can hold a text field.
  *
+ * A line into a cut node (or anywhere under one) is dashed and faded, like
+ * the node.
+ *
  * Subscribes narrowly, like a node: only to its own label, whether it is
- * being edited, and whether the node it leads to is selected.
+ * being edited, and whether the node it leads to is selected or cut.
  */
 export const TreeEdgeView = memo(function TreeEdgeView({
   id,
@@ -54,6 +57,10 @@ export const TreeEdgeView = memo(function TreeEdgeView({
   const isTargetSelected = useTreeStore(
     (s) => s.selectedId !== null && s.tree.edges[edgeId]?.target === s.selectedId,
   );
+  const isCut = useTreeStore((s) => {
+    const target = s.tree.edges[edgeId]?.target;
+    return target !== undefined && cutIdsOf(s.tree).has(target);
+  });
   const setEdgeLabel = useTreeStore((s) => s.setEdgeLabel);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
   const stopEditing = useTreeStore((s) => s.stopEditing);
@@ -98,7 +105,7 @@ export const TreeEdgeView = memo(function TreeEdgeView({
 
   return (
     <>
-      <BaseEdge id={id} path={path} />
+      <BaseEdge id={id} path={path} className={isCut ? styles.cutPath : undefined} />
       {(label || isEditing) && (
         <EdgeLabelRenderer>
           <div
@@ -106,6 +113,7 @@ export const TreeEdgeView = memo(function TreeEdgeView({
             className={`${styles.label} nodrag nopan`}
             data-selected={isTargetSelected || undefined}
             data-editing={isEditing || undefined}
+            data-cut={isCut || undefined}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
             onDoubleClick={() => startEditingLabel(edgeId)}
           >

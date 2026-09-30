@@ -12,8 +12,9 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "../../components/ui/context-menu";
-import { PALETTE_COLORS, type NodeId, type PaletteColor } from "../../domain/types";
-import { useTreeStore } from "../../store/treeStore";
+import { NODE_STATUSES, PALETTE_COLORS, type NodeId, type NodeStatus, type PaletteColor } from "../../domain/types";
+import { selectionOf, useTreeStore } from "../../store/treeStore";
+import { STATUS_META } from "./statusMeta";
 
 const NONE = "none";
 
@@ -23,7 +24,7 @@ function capitalise(word: string): string {
 
 /**
  * The right-click menu for nodes: notes, fork, collapse/expand (for nodes
- * with children) and the colour palette.
+ * with children), the status and the colour palette.
  *
  * One menu wraps the whole canvas rather than one per node: on right-click
  * it looks up which node is under the pointer (React Flow puts the node's id
@@ -56,8 +57,13 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
       event.preventDefault();
       return;
     }
-    // Selected too, so it is obvious which node the menu is about.
-    select(id);
+    // Selected too, so it is obvious which node the menu is about. A node
+    // already in a marquee group keeps the group (becoming its last pick),
+    // so status and colour apply to all of it, as the keys do.
+    const store = useTreeStore.getState();
+    const group = selectionOf(store);
+    if (group.length > 1 && group.includes(id)) store.selectMany([...group.filter((g) => g !== id), id]);
+    else select(id);
     setTargetId(id);
   }
 
@@ -80,6 +86,7 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
         {targetId && <NotesItem nodeId={targetId} runAfterClose={runAfterClose} />}
         {targetId && <ForkItem nodeId={targetId} runAfterClose={runAfterClose} />}
         {targetId && <CollapseItem nodeId={targetId} />}
+        {targetId && <StatusItems nodeId={targetId} />}
         {targetId && <ColorItems nodeId={targetId} />}
       </ContextMenuContent>
     </ContextMenu>
@@ -135,10 +142,43 @@ function CollapseItem({ nodeId }: { readonly nodeId: NodeId }) {
   );
 }
 
-/** The palette as radio items. Reads only this node's colour. */
+/** Keep / maybe / cut as radio items, with a separator under them. Shows
+    this node's status; sets it on the whole selection (one undo step). */
+function StatusItems({ nodeId }: { readonly nodeId: NodeId }) {
+  const status = useTreeStore((s) => s.tree.nodes[nodeId]?.status ?? null);
+  const setNodesStatus = useTreeStore((s) => s.setNodesStatus);
+
+  return (
+    <>
+      <ContextMenuLabel>Status</ContextMenuLabel>
+      <ContextMenuRadioGroup
+        value={status ?? NONE}
+        onValueChange={(value) =>
+          setNodesStatus(selectionOf(useTreeStore.getState()), value === NONE ? null : (value as NodeStatus))
+        }
+      >
+        <ContextMenuRadioItem value={NONE}>None</ContextMenuRadioItem>
+        {NODE_STATUSES.map((option) => {
+          const { label, icon: Icon } = STATUS_META[option];
+          return (
+            <ContextMenuRadioItem key={option} value={option}>
+              <Icon aria-hidden />
+              {label}
+              {option === "cut" && <ContextMenuShortcut>X</ContextMenuShortcut>}
+            </ContextMenuRadioItem>
+          );
+        })}
+      </ContextMenuRadioGroup>
+      <ContextMenuSeparator />
+    </>
+  );
+}
+
+/** The palette as radio items. Shows this node's colour; sets it on the
+    whole selection (one undo step), like the 1-8 keys. */
 function ColorItems({ nodeId }: { readonly nodeId: NodeId }) {
   const color = useTreeStore((s) => s.tree.nodes[nodeId]?.color ?? null);
-  const setNodeColor = useTreeStore((s) => s.setNodeColor);
+  const setNodesColor = useTreeStore((s) => s.setNodesColor);
 
   return (
     <>
@@ -146,7 +186,7 @@ function ColorItems({ nodeId }: { readonly nodeId: NodeId }) {
       <ContextMenuRadioGroup
         value={color ?? NONE}
         onValueChange={(value) =>
-          setNodeColor(nodeId, value === NONE ? null : (value as PaletteColor))
+          setNodesColor(selectionOf(useTreeStore.getState()), value === NONE ? null : (value as PaletteColor))
         }
       >
         <ContextMenuRadioItem value={NONE}>

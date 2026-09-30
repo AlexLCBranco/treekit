@@ -78,6 +78,11 @@
   --palette-blue: #4c6ef5;
   --palette-purple: #9c36b5;
 
+  /* Cut branches: how much of the page shows through a cut node (0-1),
+     and the dash of the lines into them. */
+  --cut-veil: 0.55;
+  --cut-dash: 5 4;
+
   --ink-light: #ffffff;
   --ink-dark: #000000;
 }

@@ -31,3 +31,14 @@
   border-color: var(--accent);
   color: var(--text-primary);
 }
+
+/* A line into a cut branch, and its label: dashed and faded like the
+   nodes (see TreeNodeView). Beats the canvas's `.react-flow__edge-path`. */
+.cutPath:global(.react-flow__edge-path) {
+  stroke-dasharray: var(--cut-dash);
+  opacity: calc(1 - var(--cut-veil));
+}
+
+.label[data-cut] {
+  opacity: calc(1 - var(--cut-veil));
+}

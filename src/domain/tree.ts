@@ -3,6 +3,7 @@ import type {
   EdgeId,
   LayoutDirection,
   NodeId,
+  NodeStatus,
   PaletteColor,
   TreeEdge,
   TreeNode,
@@ -17,7 +18,7 @@ import type {
  */
 
 function makeNode(title: string): TreeNode {
-  return { id: createNodeId(), title, color: null, collapsed: false, notes: "" };
+  return { id: createNodeId(), title, color: null, collapsed: false, notes: "", status: null };
 }
 
 /** A fresh tree with just a root node, at the board's origin. */
@@ -30,6 +31,7 @@ export function createTree(rootTitle = "Decision", direction: LayoutDirection = 
     edges: {},
     childEdges: { [root.id]: [] },
     direction,
+    hideCut: false,
   };
 }
 
@@ -142,23 +144,51 @@ export function expandAll(state: TreeState): TreeState {
   return { ...state, nodes };
 }
 
-/** How many nodes a collapsed node hides: everything below it. */
+/** How many nodes a collapsed node hides: everything below it that would
+    show if it were unfolded (a hidden cut branch stays hidden either way). */
 export function hiddenCount(state: TreeState, nodeId: NodeId): number {
-  return state.nodes[nodeId] ? subtreeIds(state, nodeId).length - 1 : 0;
+  if (!state.nodes[nodeId]) return 0;
+  let count = 0;
+  const stack = visibleChildren(state, nodeId);
+  let id: NodeId | undefined;
+  while ((id = stack.pop()) !== undefined) {
+    count++;
+    stack.push(...visibleChildren(state, id));
+  }
+  return count;
+}
+
+/** Children, minus any hidden cut ones; folding is not considered. */
+export function visibleChildren(state: TreeState, nodeId: NodeId): NodeId[] {
+  const children = childrenOf(state, nodeId);
+  return state.hideCut ? children.filter((id) => !isHiddenCut(state, id)) : children;
+}
+
+/** Whether this node (and so its branch) is off the page because it is cut
+    and cut branches are hidden. */
+export function isHiddenCut(state: TreeState, nodeId: NodeId): boolean {
+  return state.hideCut && state.nodes[nodeId]?.status === "cut";
 }
 
 /**
- * The node itself if it is on screen, else the collapsed ancestor that
- * hides it (the one nearest the root), or `null` if it does not exist.
- * Keeps the selection on something visible after a collapse or an undo.
+ * The node itself if it is on screen, else the nearest thing on screen
+ * that stands for it: the collapsed ancestor that hides it (the one
+ * nearest the root), or the parent of a hidden cut branch it is in.
+ * `null` if it does not exist or its whole tree is a hidden cut. Keeps the
+ * selection on something visible after a collapse, a cut or an undo.
  */
 export function visibleAncestor(state: TreeState, nodeId: NodeId): NodeId | null {
   if (!state.nodes[nodeId]) return null;
-  let visible = nodeId;
+  // The path from the root down to the node.
+  const path = [nodeId];
   for (let edge = parentEdgeOf(state, nodeId); edge; edge = parentEdgeOf(state, edge.source)) {
-    if (state.nodes[edge.source].collapsed) visible = edge.source;
+    path.unshift(edge.source);
   }
-  return visible;
+  for (let i = 0; i < path.length; i++) {
+    if (isHiddenCut(state, path[i])) return i > 0 ? path[i - 1] : null;
+    if (i < path.length - 1 && state.nodes[path[i]].collapsed) return path[i];
+  }
+  return nodeId;
 }
 
 export function setDirection(state: TreeState, direction: LayoutDirection): TreeState {
@@ -281,7 +311,7 @@ export function cloneTree(state: TreeState): TreeState {
   }
   const roots = state.roots.map((id) => nodeIds.get(id)!);
   const trash = state.trash.map((entry) => ({ ...entry, rootId: nodeIds.get(entry.rootId)! }));
-  return { roots, trash, nodes, edges, childEdges, direction: state.direction };
+  return { roots, trash, nodes, edges, childEdges, direction: state.direction, hideCut: state.hideCut };
 }
 
 /** The root of the tree `nodeId` belongs to (itself for a root). */
@@ -355,7 +385,8 @@ export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
 
 /**
  * Everything drawn on the canvas: nodes reachable from any root without
- * passing through a collapsed node, and the edges between them, both in
+ * passing through a collapsed node or (with `hideCut`) a cut one, and the
+ * edges between them, both in
  * depth-first sibling order, one root after the other (the layout relies on
  * that order to keep siblings where they were created).
  */
@@ -366,10 +397,10 @@ export function visibleSubtree(state: TreeState): { nodeIds: NodeId[]; edgeIds: 
   let id: NodeId | undefined;
   while ((id = stack.pop()) !== undefined) {
     const node = state.nodes[id];
-    if (!node) continue;
+    if (!node || isHiddenCut(state, id)) continue;
     nodeIds.push(id);
     if (node.collapsed) continue;
-    const edges = state.childEdges[id] ?? [];
+    const edges = (state.childEdges[id] ?? []).filter((e) => !isHiddenCut(state, state.edges[e].target));
     edgeIds.push(...edges);
     // Pushed in reverse so the first child is popped (visited) first.
     for (let i = edges.length - 1; i >= 0; i--) stack.push(state.edges[edges[i]].target);
@@ -385,6 +416,57 @@ export function deleteBranches(state: TreeState, nodeIds: readonly NodeId[], del
     if (!isRoot(acc, id)) return deleteBranch(acc, id);
     return deletedAt === undefined ? acc : trashTree(acc, id, deletedAt);
   }, state);
+}
+
+/** Sets a node's status; `null` clears it. */
+export function setNodeStatus(state: TreeState, nodeId: NodeId, status: NodeStatus | null): TreeState {
+  const node = state.nodes[nodeId];
+  if (!node || node.status === status) return state;
+  return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, status } } };
+}
+
+/** Sets the same status on several nodes; `null` clears it. */
+export function setNodesStatus(
+  state: TreeState,
+  nodeIds: readonly NodeId[],
+  status: NodeStatus | null,
+): TreeState {
+  return nodeIds.reduce((s, id) => setNodeStatus(s, id, status), state);
+}
+
+/** The X key: cuts every node given, or, if all of them already are,
+    un-cuts them (back to no status). */
+export function toggleCut(state: TreeState, nodeIds: readonly NodeId[]): TreeState {
+  const present = nodeIds.filter((id) => state.nodes[id]);
+  if (present.length === 0) return state;
+  const allCut = present.every((id) => state.nodes[id].status === "cut");
+  return setNodesStatus(state, present, allCut ? null : "cut");
+}
+
+/**
+ * Every node on the board that looks cut: cut itself, or anywhere under a
+ * cut node. (Trashed trees are not on the board, so not included.)
+ * Worked out from the roots down in one pass, so it costs the same however
+ * deep the tree is.
+ */
+export function cutNodeIds(state: TreeState): Set<NodeId> {
+  const cut = new Set<NodeId>();
+  const stack: [NodeId, boolean][] = state.roots.map((id) => [id, false]);
+  let entry: [NodeId, boolean] | undefined;
+  while ((entry = stack.pop()) !== undefined) {
+    const [id, underCut] = entry;
+    const node = state.nodes[id];
+    if (!node) continue;
+    const isCut = underCut || node.status === "cut";
+    if (isCut) cut.add(id);
+    for (const child of childrenOf(state, id)) stack.push([child, isCut]);
+  }
+  return cut;
+}
+
+/** Shows or hides the cut branches. */
+export function setHideCut(state: TreeState, hideCut: boolean): TreeState {
+  return state.hideCut === hideCut ? state : { ...state, hideCut };
 }
 
 /** Sets the same colour on several nodes; `null` clears it. */

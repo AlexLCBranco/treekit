@@ -46,6 +46,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   L                          label the line leading into it
  *   N                          open its notes
  *   F                          fork its branch into a new tree
+ *   X                          cut it (non-destructive), or un-cut it
  *   Space                      collapse or expand its branch
  *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
@@ -127,6 +128,9 @@ export function useTreeShortcuts() {
         // Otherwise the "f" would be typed into the new tree's name.
         event.preventDefault();
         store.forkBranch(selectedId);
+      } else if (key === "x" && !event.shiftKey) {
+        // A marquee group is cut (or un-cut) together, like colours.
+        store.toggleCut(selectionOf(store));
       } else if (key === " ") {
         // Also stops the page scrolling.
         event.preventDefault();

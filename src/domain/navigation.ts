@@ -1,5 +1,5 @@
 import type { Point, Size } from "./layout";
-import { childrenOf, parentEdgeOf, visibleSubtree } from "./tree";
+import { childrenOf, parentEdgeOf, visibleChildren, visibleSubtree } from "./tree";
 import type { LayoutDirection, NodeId, TreeState } from "./types";
 
 /**
@@ -61,7 +61,7 @@ export function moveFrom(
 
   if (move === "child") {
     if (state.nodes[fromId].collapsed) return null;
-    const children = childrenOf(state, fromId);
+    const children = visibleChildren(state, fromId);
     return remembered && children.includes(remembered) ? remembered : (children[0] ?? null);
   }
 

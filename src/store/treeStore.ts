@@ -8,6 +8,7 @@ import type {
   EdgeId,
   LayoutDirection,
   NodeId,
+  NodeStatus,
   PaletteColor,
   TreeDoc,
   TreeId,
@@ -100,6 +101,12 @@ interface TreeStore {
   deleteBranches: (nodeIds: readonly NodeId[]) => void;
   /** Colours several nodes as one undo step; `null` clears. */
   setNodesColor: (nodeIds: readonly NodeId[], color: PaletteColor | null) => void;
+  /** Sets the status of several nodes as one undo step; `null` clears. */
+  setNodesStatus: (nodeIds: readonly NodeId[], status: NodeStatus | null) => void;
+  /** Cuts these nodes, or un-cuts them if all already are (X). */
+  toggleCut: (nodeIds: readonly NodeId[]) => void;
+  /** Hides cut branches (closing the gap) or shows them greyed out. */
+  setHideCut: (hideCut: boolean) => void;
   /** Replaces a node's notes. One panel session (open to close, or until
       another node is shown) is one undo step. */
   setNotes: (nodeId: NodeId, notes: string) => void;
@@ -130,6 +137,37 @@ type Snapshot = Pick<TreeStore, "tree" | "history" | "newNodeId">;
 /** One undoable edit: the new tree plus its history entry. */
 function commit(s: Snapshot, next: TreeState): Pick<TreeStore, "tree" | "history" | "newNodeId"> {
   return { tree: next, history: history.record(s.history, s.tree, next), newNodeId: null };
+}
+
+/**
+ * Commits an edit that can take nodes off the page (cutting while cut
+ * branches are hidden, or hiding them): a selection that went with them
+ * moves to the nearest node still showing, and a marquee group shrinks to
+ * that one node.
+ */
+function commitVisible(s: TreeStore, next: TreeState): Partial<TreeStore> {
+  if (next === s.tree) return s;
+  const selectedId = keepIfPresent(next, s.selectedId);
+  if (selectedId === s.selectedId) return commit(s, next);
+  return {
+    ...commit(s, next),
+    selectedId,
+    selectedIds: selectedId ? [selectedId] : [],
+    editingId: null,
+    editingEdgeId: null,
+  };
+}
+
+/** Every node that looks cut (see `tree.cutNodeIds`), worked out once per
+    tree state and shared by every node and line that asks. */
+const cutCache = new WeakMap<TreeState, ReadonlySet<NodeId>>();
+export function cutIdsOf(state: TreeState): ReadonlySet<NodeId> {
+  let ids = cutCache.get(state);
+  if (!ids) {
+    ids = tree.cutNodeIds(state);
+    cutCache.set(state, ids);
+  }
+  return ids;
 }
 
 /** After undo/redo, drop a selection that points at a node that is gone,
@@ -401,6 +439,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       const next = tree.setNodesColor(s.tree, nodeIds, color);
       return next === s.tree ? s : commit(s, next);
     }),
+
+  setNodesStatus: (nodeIds, status) => set((s) => commitVisible(s, tree.setNodesStatus(s.tree, nodeIds, status))),
+
+  toggleCut: (nodeIds) => set((s) => commitVisible(s, tree.toggleCut(s.tree, nodeIds))),
+
+  setHideCut: (hideCut) => set((s) => commitVisible(s, tree.setHideCut(s.tree, hideCut))),
 
   setNotes: (nodeId, notes) =>
     set((s) => {

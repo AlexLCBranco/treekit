@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.29_
+_Last updated: 2026-09-30, v0.0.30_
 
 ## What it is
 
@@ -73,6 +73,19 @@ with Vitest tests.
   the original, which is untouched. It is named "<tree name> — <node
   title>" (forking a root gives "<tree name> (copy)") and opens for
   renaming; the fork and its naming are one undo step
+- Node status, a non-destructive alternative to deleting: right-click >
+  Status: none, keep, maybe or cut; X cuts (or un-cuts) the selected
+  node. With several nodes picked by marquee, the menu and X set them all
+  as one undo step (right-clicking a node inside the group keeps the group,
+  so the menu's colours now apply to all of it too). Keep and maybe are a
+  small neutral badge on the node's top-left corner. Cut greys out the node
+  and its whole branch (a veil over the node, dashed border and dashed
+  lines into it, a scissors badge on the node that was cut); everything
+  stays selectable, editable and foldable, and nodes under a cut one keep
+  their own status, so un-cutting brings back exactly what was there.
+  "Hide cut" in the header (with a count of cut branches) hides them the
+  way folding does, closing the gap; it is saved with the board and is an
+  undo step. Delete still deletes
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
@@ -100,7 +113,8 @@ with Vitest tests.
   adding a child and naming it undo as one step
 - Auto-save: the tree is saved as you go and comes back on reload; a
   damaged save opens repaired, with the original kept aside. The save
-  format is versioned (now v3, which added notes); older saves open unchanged
+  format is versioned (now v4: v3 added notes, v4 status and the "Hide
+  cut" choice); older saves open unchanged
 - Automatic tidy layout, top-down or left-right (toggle in the header);
   sibling order is kept, long titles wrap, and nodes glide to new places
 - Multiple trees: the tree's name in the header (click to rename) and a
@@ -110,9 +124,12 @@ with Vitest tests.
   shortcut and mouse gesture, like Boardkit's
 - Export and import (the download button in the header): PNG or SVG of the
   whole tree (folded branches unfolded, no buttons or selection, titles
-  only, in the current light/dark theme); copy or download the tree as a
-  Mermaid flowchart (labels, colours, direction and notes included; notes
-  go in `%% notes` comment lines, which Mermaid ignores and import reads back); import pasted
+  only, in the current light/dark theme; cut branches greyed out, or left
+  out while "Hide cut" is on); copy or download the tree as a
+  Mermaid flowchart (labels, colours, direction, notes and status
+  included; notes go in `%% notes` comment lines, which Mermaid ignores and
+  import reads back; status as `keep` / `maybe` / `cut` classes, read back
+  from `class` lines or `A:::cut`); import pasted
   Mermaid as a new tree. Import understands the usual flowchart syntax
   (any node shape, `-->`/`---`/`==>`/`-.->`, `|label|` or `-- label -->`,
   chains, `&`) and refuses, naming the node, what a tree can't hold: two
@@ -120,10 +137,10 @@ with Vitest tests.
 
 ## What's next
 
-In progress (the "sandbox" set, for branching stories):
-- Node status: keep / maybe / cut, with a "Hide cut branches" toggle
-
-Ideas, not yet ordered:
+The "sandbox" set (notes, fork, keep/maybe/cut) is done. Ideas, not yet
+ordered:
+- Filter or jump to nodes by status (e.g. "show only keep")
+- Colour as a submenu: the right-click menu is getting long
 - Mermaid subgraphs, and nodes with two parents (needs a graph layout)
 - Import Mermaid with several starting points as several trees on one board
   (export already writes every tree; import still refuses more than one)

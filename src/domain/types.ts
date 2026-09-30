@@ -32,6 +32,13 @@ export const PALETTE_COLORS = [
 ] as const;
 export type PaletteColor = (typeof PALETTE_COLORS)[number];
 
+/**
+ * A node's verdict while trying things out. `cut` is the non-destructive
+ * delete: the branch stays, greyed out (or hidden), and can come back.
+ */
+export const NODE_STATUSES = ["keep", "maybe", "cut"] as const;
+export type NodeStatus = (typeof NODE_STATUSES)[number];
+
 export interface TreeNode {
   readonly id: NodeId;
   readonly title: string;
@@ -42,6 +49,9 @@ export interface TreeNode {
   /** Free multi-line text behind the title; empty string = no notes.
       Never drawn on the node itself, so it never changes the layout. */
   readonly notes: string;
+  /** `null` = no status. Only the node's own verdict: a node under a cut
+      one looks cut too, but keeps its own status for when it comes back. */
+  readonly status: NodeStatus | null;
 }
 
 export interface TreeEdge {
@@ -77,6 +87,8 @@ export interface TreeState {
   /** Outgoing edges of each node, in sibling order. */
   readonly childEdges: Readonly<Record<NodeId, readonly EdgeId[]>>;
   readonly direction: LayoutDirection;
+  /** Cut branches are hidden, like folded ones, instead of greyed out. */
+  readonly hideCut: boolean;
 }
 
 /** A saved tree: its content plus the metadata a tree switcher shows. */

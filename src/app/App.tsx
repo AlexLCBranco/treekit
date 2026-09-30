@@ -2,6 +2,7 @@ import { ExportMenu } from "../features/export/ExportMenu";
 import { NotesPanel } from "../features/notes/NotesPanel";
 import { AlignPanel } from "../features/tree/AlignPanel";
 import { DirectionToggle } from "../features/tree/DirectionToggle";
+import { HideCutToggle } from "../features/tree/HideCutToggle";
 import { HistoryButtons } from "../features/tree/HistoryButtons";
 import { ShortcutsDialog } from "../features/tree/ShortcutsDialog";
 import { TreeCanvas } from "../features/tree/TreeCanvas";
@@ -25,6 +26,7 @@ export function App() {
         <HistoryButtons />
         <DirectionToggle />
         <AlignPanel />
+        <HideCutToggle />
         <div className={styles.spacer} />
         <TrashPanel />
         <ExportMenu />

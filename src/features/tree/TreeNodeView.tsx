@@ -3,9 +3,10 @@ import { ChevronsDownUp, ChevronsUpDown, NotebookPen, StickyNote, Trash2 } from 
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
-import { hiddenCount, isRoot as isRootOf } from "../../domain/tree";
+import { hiddenCount, isRoot as isRootOf, visibleChildren } from "../../domain/tree";
 import type { NodeId } from "../../domain/types";
-import { useTreeStore } from "../../store/treeStore";
+import { cutIdsOf, useTreeStore } from "../../store/treeStore";
+import { STATUS_META } from "./statusMeta";
 import styles from "./TreeNodeView.module.css";
 
 /** React Flow's node record for a tree node. The node's content is not
@@ -18,10 +19,12 @@ export type TreeFlowNode = Node<Record<string, never>, "tree">;
  * the tree grows towards, and on hover a toolbar above it that opens the
  * notes, folds the branch and deletes it (a root sends its whole tree to
  * the trash instead). A folded node shows how many nodes it hides; a node
- * with notes shows an icon, and their first lines on hover.
+ * with notes shows an icon, and their first lines on hover. A status
+ * shows as a badge on the other corner; a cut node, and everything under
+ * it, is greyed out.
  *
  * Subscribes narrowly: only to its own node record, its child count,
- * whether it is being edited, and the tree's direction. Renaming one node
+ * whether it is being edited or looks cut, and the tree's direction. Renaming one node
  * re-renders that node alone. (The hidden count is a number, so the
  * selector's result only "changes" when the count does.)
  */
@@ -34,7 +37,9 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   const canDelete = useTreeStore((s) => !isRootOf(s.tree, nodeId) || s.tree.roots.length > 1);
   const deleteBranch = useTreeStore((s) => s.deleteBranch);
   const direction = useTreeStore((s) => s.tree.direction);
-  const childCount = useTreeStore((s) => s.tree.childEdges[nodeId]?.length ?? 0);
+  // Hidden cut children don't count: there is nothing to fold if all are.
+  const childCount = useTreeStore((s) => visibleChildren(s.tree, nodeId).length);
+  const isCut = useTreeStore((s) => cutIdsOf(s.tree).has(nodeId));
   const hidden = useTreeStore((s) =>
     s.tree.nodes[nodeId]?.collapsed ? hiddenCount(s.tree, nodeId) : 0,
   );
@@ -66,6 +71,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       data-colored={node.color ? true : undefined}
       data-collapsed={node.collapsed || undefined}
       data-notes={node.notes ? true : undefined}
+      data-cut={isCut || undefined}
       data-direction={direction}
       style={style}
       onDoubleClick={() => startEditing(nodeId)}
@@ -132,9 +138,10 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
 
       {/* Notes: a small icon in the corner says there are some; hovering
           shows their first lines. Both float, so notes never resize the node. */}
+      {node.status && <StatusBadge status={node.status} />}
       {node.notes && (
         <>
-          <span className={styles.notesIcon} aria-label="Has notes" role="img">
+          <span className={`${styles.badge} ${styles.notesIcon}`} aria-label="Has notes" role="img">
             <StickyNote size={10} aria-hidden />
           </span>
           <div className={styles.notesPreview} aria-hidden>
@@ -194,3 +201,20 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
     </div>
   );
 });
+
+/** The status marker on the node's top-left corner: neutral, so it never
+    competes with a colour tint. */
+function StatusBadge({ status }: { readonly status: keyof typeof STATUS_META }) {
+  const { label, icon: Icon } = STATUS_META[status];
+  return (
+    <span
+      className={`${styles.badge} ${styles.statusBadge}`}
+      data-status={status}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <Icon size={10} strokeWidth={2.5} aria-hidden />
+    </span>
+  );
+}

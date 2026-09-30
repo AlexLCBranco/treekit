@@ -201,12 +201,11 @@
   color: var(--ink-light);
 }
 
-/* Notes: a small icon on the top-right corner, straddling the border like
-   a badge, so it takes no room inside the node. */
-.notesIcon {
+/* Corner badges (notes, status): small circles straddling the border, so
+   they take no room inside the node. */
+.badge {
   position: absolute;
   top: calc(-1 * var(--space-2));
-  right: calc(-1 * var(--space-2));
   display: grid;
   place-items: center;
   width: var(--space-4);
@@ -215,7 +214,43 @@
   border-radius: var(--radius-full);
   background: var(--surface-raised);
   color: var(--text-secondary);
+}
+
+.notesIcon {
+  right: calc(-1 * var(--space-2));
   pointer-events: none;
+}
+
+.statusBadge {
+  left: calc(-1 * var(--space-2));
+}
+
+/* Keep reads a touch stronger than maybe, still without colour. */
+.statusBadge[data-status="keep"] {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+/* Cut: the node and its whole branch fade into the page. A veil in the
+   page's colour rather than `opacity`, so the hover toolbar and buttons
+   (drawn above the veil) stay fully readable. */
+.node[data-cut]::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: var(--surface-app);
+  opacity: var(--cut-veil);
+  pointer-events: none;
+}
+
+.node[data-cut] {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.node[data-cut] .badge {
+  opacity: calc(1 - var(--cut-veil));
 }
 
 /* Hovering shows the notes' first lines in a card under the node (under
