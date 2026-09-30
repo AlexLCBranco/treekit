@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 
 import { layoutTree, type Size } from "../../domain/layout";
 import { placeOnPage, scrollToReveal } from "../../domain/navigation";
+import { ZOOM_MAX, ZOOM_MIN } from "../../domain/zoom";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { selectionOf, useTreeStore } from "../../store/treeStore";
@@ -24,6 +25,7 @@ import { useAnimatedPositions } from "./useAnimatedPositions";
 import { useTreeShortcuts } from "./useTreeShortcuts";
 import { LaserTrail } from "./LaserTrail";
 import { ToolPicker } from "./ToolPicker";
+import { ZoomControls } from "./ZoomControls";
 
 // Defined once at module level: React Flow warns (and re-mounts every
 // node) if this object changes identity between renders.
@@ -31,7 +33,7 @@ const nodeTypes = { tree: TreeNodeView };
 const edgeTypes = { tree: TreeEdgeView };
 
 /**
- * The trees on a page like Boardkit's: no panning or zooming, always at 100%.
+ * The trees on a page like Boardkit's: no panning; zoomed only by the zoom pill.
  * The page is the size of the screen and scrolls natively where it is bigger.
  *
  * Data flow, one direction only:
@@ -116,6 +118,7 @@ function TreeCanvasInner() {
   // where the tree does not fit. Recomputed after every change (edit,
   // direction, alignment, window size).
   const alignment = useViewStore((s) => s.alignment);
+  const zoom = useViewStore((s) => s.zoom);
   const page = useMemo(() => {
     if (!hasSettled || !screen || screen.width === 0 || screen.height === 0) return null;
     let minX = Infinity;
@@ -131,20 +134,20 @@ function TreeCanvasInner() {
     }
     if (minX === Infinity) return null;
     const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    return placeOnPage(bounds, screen, alignment, FRAME_MARGIN);
-  }, [hasSettled, screen, targets, sizes, alignment]);
+    return placeOnPage(bounds, screen, alignment, FRAME_MARGIN, zoom);
+  }, [hasSettled, screen, targets, sizes, alignment, zoom]);
 
   // Move the tree onto the page. The first placement snaps (after a frame,
   // so React Flow has its size); the rest glide together with the nodes.
   const didPlace = useRef(false);
   useEffect(() => {
     if (!page) return;
-    const view = { x: page.x, y: page.y, zoom: 1 };
+    const view = { x: page.x, y: page.y, zoom };
     const first = !didPlace.current;
     didPlace.current = true;
     if (first) requestAnimationFrame(() => void setViewport(view, { duration: 0 }));
     else void setViewport(view, { duration: FRAME_PAN_MS });
-  }, [page, setViewport]);
+  }, [page, zoom, setViewport]);
 
   // Keep the selected node on screen when the page scrolls: arrow keys, a
   // new child or a rename can land it past the edge. Not while a marquee
@@ -161,9 +164,15 @@ function TreeCanvasInner() {
       width: scroller.clientWidth,
       height: scroller.clientHeight,
     };
-    const to = scrollToReveal({ x: p.x + page.x, y: p.y + page.y, ...size }, view, FRAME_MARGIN / 2);
+    const target = {
+      x: p.x * zoom + page.x,
+      y: p.y * zoom + page.y,
+      width: size.width * zoom,
+      height: size.height * zoom,
+    };
+    const to = scrollToReveal(target, view, FRAME_MARGIN / 2);
     if (to.left !== view.left || to.top !== view.top) scroller.scrollTo({ ...to, behavior: "smooth" });
-  }, [selectedId, groupSize, targets, sizes, page]);
+  }, [selectedId, groupSize, targets, sizes, page, zoom]);
 
   const nodes = useMemo<TreeFlowNode[]>(
     () =>
@@ -290,8 +299,8 @@ function TreeCanvasInner() {
               // holding Space as "drag to pan", which plain drag already does.
               panActivationKeyCode={null}
               deleteKeyCode={null}
-              minZoom={1}
-              maxZoom={1}
+              minZoom={ZOOM_MIN}
+              maxZoom={ZOOM_MAX}
               // Bottom-right belongs to the version badge.
               attributionPosition="top-right"
             >
@@ -301,6 +310,7 @@ function TreeCanvasInner() {
         </div>
         {/* Outside the scrolling page, so they stay put on the screen. */}
         <ToolPicker />
+        <ZoomControls />
         {tool === "laser" && <LaserTrail />}
       </div>
     </NodeContextMenu>

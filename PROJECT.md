@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.23_
+_Last updated: 2026-09-30, v0.0.24_
 
 ## What it is
 
@@ -20,16 +20,17 @@ library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
-TypeScript (tree model and operations, layout, keyboard navigation, undo history,
+TypeScript (tree model and operations, layout, keyboard navigation, page and zoom, undo history,
 save format, Mermaid import/export)
 with Vitest tests.
 
 ## What works now
 
-- One page, like Boardkit's board, no infinite canvas: no pan, no zoom,
-  the tree always at 100%. The page is the size of the screen; when the
-  trees need more room it grows and scrollbars appear (wheel or drag the
-  handle). The selected node is scrolled into view (arrows, new child).
+- One page, like Boardkit's board, no infinite canvas: no pan. The zoom
+  pill (bottom-left, − 100% +, click the % to reset; 50–200%, not
+  remembered across visits) is the only zoom, never automatic. The page is
+  the size of the screen; when the trees need more room it grows and
+  scrollbars appear (wheel or drag the handle). The selected node is scrolled into view (arrows, new child).
   A marquee dragged to the edge never moves the page
 - Cursor tools at the bottom of the page: select (the default) and laser
   (drag leaves a fading red trail). Keys V, K; the tool is not remembered

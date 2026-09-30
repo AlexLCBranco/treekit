@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { Align } from "../domain/navigation";
+import { clampZoom } from "../domain/zoom";
 
 /** Where the whole tree sits on the page. */
 export interface PageAlignment {
@@ -34,12 +35,17 @@ export const useViewStore = create<{
   applied: number;
   /** Session-only: a tool left on by accident should not survive a reload. */
   tool: Tool;
+  /** Session-only too, like Boardkit's: every visit starts at 100%. */
+  zoom: number;
+  setZoom: (zoom: number) => void;
   setTool: (tool: Tool) => void;
   setAlign: (axis: "x" | "y", value: Align) => void;
 }>()((set, get) => ({
   alignment: load(),
   applied: 0,
   tool: "select",
+  zoom: 1,
+  setZoom: (zoom) => set({ zoom: clampZoom(zoom) }),
   setTool: (tool) => set({ tool }),
   setAlign: (axis, value) => {
     const alignment = { ...get().alignment, [axis]: value };

@@ -106,6 +106,15 @@ describe("placeOnPage", () => {
     const page = placeOnPage({ x: 0, y: 0, width: 1440, height: 100 }, screen, { x: "center", y: "start" }, 40);
     expect(page).toEqual({ width: 1520, height: 600, x: 40, y: 40 });
   });
+
+  it("scales the trees by the zoom, margin unscaled", () => {
+    expect(placeOnPage(bounds, screen, { x: "start", y: "start" }, 40, 2)).toEqual({
+      width: 880,
+      height: 680,
+      x: 440,
+      y: 20,
+    });
+  });
 });
 
 describe("scrollToReveal", () => {
