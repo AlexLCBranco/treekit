@@ -59,6 +59,13 @@
   outline: none;
 }
 
+/* The hovered node comes to the front, so its floating toolbar (see
+   TreeNodeView) is drawn over neighbouring nodes. React Flow sets each
+   wrapper's z-index inline, hence !important. */
+.canvas :global(.react-flow__node:hover) {
+  z-index: var(--z-popover) !important;
+}
+
 /* Cursor tools (see ToolPicker): select is the arrow, laser points. */
 .canvas :global(.react-flow__pane) {
   cursor: default;

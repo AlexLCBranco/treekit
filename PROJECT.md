@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.26_
+_Last updated: 2026-09-30, v0.0.27_
 
 ## What it is
 
@@ -50,9 +50,10 @@ with Vitest tests.
   of the row), delete it for good, or empty the trash. It keeps the last 10
   trees and is saved with the board and undoable. The last tree on a board
   can't be deleted. Other nodes are still deleted straight away (undo)
-- Every node has a trash button (top edge, near the right corner, on hover
-  or selection): it deletes the node and its branch, or on a root sends the
-  tree to the trash, just like Delete
+- Hovering or selecting a node shows a small toolbar floating above it:
+  fold/unfold the branch, and a trash button that deletes the node and its
+  branch (on a root: sends the tree to the trash), just like Space and Delete.
+  Only "+" stays on the node's edge, so nothing crowds the node
 - A root node on a dot-grid page
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
 - Add a child: the "+" on a node, or select it and press Tab
@@ -66,7 +67,7 @@ with Vitest tests.
 - Colours: right-click a node for a menu of 8 fixed colours (or none), or
   select it and press 1–8 (0 clears). The node gets a tint and border in
   that colour; lines stay neutral, and new children start uncoloured
-- Collapse/expand a branch: the "−" beside a node's "+", Space on the
+- Collapse/expand a branch: the fold button in the hover toolbar, Space on the
   selected node, or the right-click menu. A folded node shows a badge with
   how many nodes it hides (click it to expand); the branch is hidden, not
   deleted, is saved that way, and folding is an undo step. If the selected

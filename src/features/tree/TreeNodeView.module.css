@@ -121,14 +121,58 @@
   top: calc(50% + var(--button-half) + var(--space-1));
 }
 
-/* Every node's trash button sits on the top edge near the right corner:
-   clear of the incoming line and its label (top centre in a top-down tree,
-   left middle in a left-right one) and of the "+" and fold buttons. */
-.node[data-direction] .delete {
-  top: calc(-1 * var(--button-half));
-  bottom: auto;
-  left: auto;
-  right: var(--space-2);
+/* The hover toolbar: a pill centred just above the node (fold, delete).
+   It floats over whatever is there (the incoming line, a sibling), so it
+   never has to squeeze onto the node's edges. */
+.toolbar {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 50%;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, var(--space-1));
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+/* An invisible bridge over the gap, so moving the mouse from the node up
+   to the toolbar doesn't end the hover and hide it. */
+.toolbar::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: var(--space-1);
+}
+
+.toolbarButton {
+  display: grid;
+  place-items: center;
+  width: var(--node-button-size);
+  height: var(--node-button-size);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.toolbarButton:hover {
+  background: var(--node-accent);
+  color: var(--ink-light);
+}
+
+.toolbarButton.delete:hover {
+  background: var(--palette-red);
 }
 
 .node:hover .nodeButton,
@@ -136,6 +180,13 @@
 .node[data-collapsed] .collapse {
   opacity: 1;
   transform: scale(1);
+}
+
+.node:hover .toolbar,
+.node[data-selected] .toolbar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
 }
 
 /* A folded branch stays marked even when the node is not hovered. */
@@ -148,9 +199,4 @@
   background: var(--node-accent);
   border-color: var(--node-accent);
   color: var(--ink-light);
-}
-
-.nodeButton.delete:hover {
-  background: var(--palette-red);
-  border-color: var(--palette-red);
 }

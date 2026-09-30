@@ -1,5 +1,5 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from "@xyflow/react";
-import { Trash2 } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
@@ -14,11 +14,10 @@ import styles from "./TreeNodeView.module.css";
 export type TreeFlowNode = Node<Record<string, never>, "tree">;
 
 /**
- * One node on the canvas: its title (inline-renamable), and on the side the
- * tree grows towards, a "+" that adds a child and (if it has children) a
- * button that folds the branch. A folded node shows how many nodes it hides.
- * On its top edge, a trash button deletes the branch (a root sends its whole
- * tree to the trash instead).
+ * One node on the canvas: its title (inline-renamable), a "+" on the side
+ * the tree grows towards, and on hover a toolbar above it that folds the
+ * branch and deletes it (a root sends its whole tree to the trash instead).
+ * A folded node shows how many nodes it hides.
  *
  * Subscribes narrowly: only to its own node record, its child count,
  * whether it is being edited, and the tree's direction. Renaming one node
@@ -110,23 +109,9 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
         +
       </button>
 
-      {canDelete && (
-        <button
-          type="button"
-          className={`${styles.nodeButton} ${styles.delete} nodrag nopan`}
-          onClick={(event) => {
-            event.stopPropagation();
-            deleteBranch(nodeId);
-          }}
-          onDoubleClick={(event) => event.stopPropagation()}
-          aria-label={isRoot ? "Delete tree" : "Delete branch"}
-          title={isRoot ? "Delete tree (Del)" : "Delete branch (Del)"}
-        >
-          <Trash2 size={12} />
-        </button>
-      )}
-
-      {childCount > 0 && (
+      {/* A folded node keeps a badge beside "+" with how many nodes it
+          hides, visible without hovering; clicking it expands. */}
+      {node.collapsed && (
         <button
           type="button"
           className={`${styles.nodeButton} ${styles.collapse} nodrag nopan`}
@@ -135,12 +120,50 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
             toggleCollapsed(nodeId);
           }}
           onDoubleClick={(event) => event.stopPropagation()}
-          aria-label={node.collapsed ? `Expand branch (${hidden} hidden)` : "Collapse branch"}
-          aria-expanded={!node.collapsed}
-          title={node.collapsed ? `Expand: ${hidden} hidden (Space)` : "Collapse branch (Space)"}
+          aria-label={`Expand branch (${hidden} hidden)`}
+          title={`Expand: ${hidden} hidden (Space)`}
         >
-          {node.collapsed ? hidden : "−"}
+          {hidden}
         </button>
+      )}
+
+      {/* The hover toolbar: a pill floating above the node, like Boardkit's
+          card actions, so its buttons never crowd the node's edges. */}
+      {(childCount > 0 || canDelete) && (
+        <div
+          className={`${styles.toolbar} nodrag nopan`}
+          onDoubleClick={(event) => event.stopPropagation()}
+        >
+          {childCount > 0 && (
+            <button
+              type="button"
+              className={styles.toolbarButton}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleCollapsed(nodeId);
+              }}
+              aria-label={node.collapsed ? "Expand branch" : "Collapse branch"}
+              aria-expanded={!node.collapsed}
+              title={node.collapsed ? "Expand branch (Space)" : "Collapse branch (Space)"}
+            >
+              {node.collapsed ? <ChevronsUpDown size={14} /> : <ChevronsDownUp size={14} />}
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              className={`${styles.toolbarButton} ${styles.delete}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                deleteBranch(nodeId);
+              }}
+              aria-label={isRoot ? "Delete tree" : "Delete branch"}
+              title={isRoot ? "Delete tree (Del)" : "Delete branch (Del)"}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
