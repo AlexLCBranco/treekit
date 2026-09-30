@@ -48,6 +48,10 @@ interface TreeStore {
       folded into the same undo step as creating it. */
   readonly newNodeId: NodeId | null;
   readonly selectedId: NodeId | null;
+  /** A group picked with the marquee. Only counts while it contains
+      `selectedId`; anything that moves the selection elsewhere ends it (see
+      `selectionOf`). */
+  readonly selectedIds: readonly NodeId[];
   /** The node whose title is open for inline renaming, if any. */
   readonly editingId: NodeId | null;
   /** The edge whose label is open for editing, if any. At most one of
@@ -75,6 +79,12 @@ interface TreeStore {
   undo: () => void;
   redo: () => void;
   select: (nodeId: NodeId | null) => void;
+  /** Selects a group (the marquee); the last one is the primary. */
+  selectMany: (nodeIds: readonly NodeId[]) => void;
+  /** Deletes several branches as one undo step. */
+  deleteBranches: (nodeIds: readonly NodeId[]) => void;
+  /** Colours several nodes as one undo step; `null` clears. */
+  setNodesColor: (nodeIds: readonly NodeId[], color: PaletteColor | null) => void;
   startEditing: (nodeId: NodeId) => void;
   stopEditing: () => void;
   /** Opens an edge's label for editing and selects the node it leads to,
@@ -105,6 +115,14 @@ function commit(s: Snapshot, next: TreeState): Pick<TreeStore, "tree" | "history
     and move one that is now folded away to the node hiding it. */
 function keepIfPresent(state: TreeState, id: NodeId | null): NodeId | null {
   return id && tree.visibleAncestor(state, id);
+}
+
+/** Every selected node: the marquee group while it still contains the
+    primary selection, else just that one node. Filtered to nodes that exist. */
+export function selectionOf(s: Pick<TreeStore, "tree" | "selectedId" | "selectedIds">): NodeId[] {
+  if (!s.selectedId) return [];
+  const group = s.selectedIds.includes(s.selectedId) ? s.selectedIds : [s.selectedId];
+  return group.filter((id) => s.tree.nodes[id]);
 }
 
 function blankDoc(name: string): TreeDoc {
@@ -169,6 +187,7 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
   histories: {},
   newNodeId: null,
   selectedId: null,
+  selectedIds: [],
   editingId: null,
   editingEdgeId: null,
 
@@ -286,8 +305,41 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
 
   select: (nodeId) =>
     set((s) =>
-      s.selectedId === nodeId ? s : { selectedId: nodeId, editingId: null, editingEdgeId: null },
+      s.selectedId === nodeId && s.selectedIds.length <= 1
+        ? s
+        : { selectedId: nodeId, selectedIds: nodeId ? [nodeId] : [], editingId: null, editingEdgeId: null },
     ),
+
+  selectMany: (nodeIds) =>
+    set((s) => {
+      const selectedId = nodeIds[nodeIds.length - 1] ?? null;
+      const same =
+        s.selectedId === selectedId &&
+        s.selectedIds.length === nodeIds.length &&
+        s.selectedIds.every((id, i) => id === nodeIds[i]);
+      return same ? s : { selectedId, selectedIds: nodeIds, editingId: null, editingEdgeId: null };
+    }),
+
+  deleteBranches: (nodeIds) =>
+    set((s) => {
+      const next = tree.deleteBranches(s.tree, nodeIds);
+      if (next === s.tree) return s;
+      // Focus moves to whatever sat beside the first one, if it survived.
+      const beside = nodeIds[0] ? tree.neighbourAfterDelete(s.tree, nodeIds[0]) : null;
+      return {
+        ...commit(s, next),
+        selectedId: beside && next.nodes[beside] ? beside : null,
+        selectedIds: [],
+        editingId: null,
+        editingEdgeId: null,
+      };
+    }),
+
+  setNodesColor: (nodeIds, color) =>
+    set((s) => {
+      const next = tree.setNodesColor(s.tree, nodeIds, color);
+      return next === s.tree ? s : commit(s, next);
+    }),
 
   startEditing: (nodeId) => set({ selectedId: nodeId, editingId: nodeId, editingEdgeId: null }),
 

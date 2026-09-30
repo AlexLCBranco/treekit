@@ -57,3 +57,16 @@
 .canvas[data-tool="laser"] :global(.react-flow__viewport *) {
   pointer-events: none !important;
 }
+
+/* The marquee (select tool): a tinted box in the accent colour. React
+   Flow's own box around the picked group would swallow clicks meant for
+   the nodes inside it, and the nodes already show they are selected. */
+.canvas :global(.react-flow__selection) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.canvas :global(.react-flow__nodesselection) {
+  display: none;
+}

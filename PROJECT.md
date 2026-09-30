@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.17_
+_Last updated: 2026-09-30, v0.0.18_
 
 ## What it is
 
@@ -30,6 +30,10 @@ with Vitest tests.
   mode: hand (drag pans, even from a node; nothing gets selected), select
   (the default) and laser (drag leaves a fading red trail). Keys H, V, K;
   the tool is not remembered across visits
+- Select tool: dragging empty canvas draws a marquee that picks every node
+  it touches (middle-drag still pans). With several picked, 1–8 / 0 colour
+  them all and Delete removes their branches, each as one undo step; other
+  shortcuts (arrows, Tab, rename) work on the last one picked
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits
 - Several trees on one board: double-click empty canvas to start another
   tree, its first node centred where you clicked (and open for naming). Each

@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { addChild, childrenOf, createTree, deleteBranch, deleteNode, neighbourAfterDelete } from "./tree";
+import {
+  addChild,
+  childrenOf,
+  createTree,
+  deleteBranch,
+  deleteBranches,
+  deleteNode,
+  neighbourAfterDelete,
+  setNodesColor,
+} from "./tree";
 import type { NodeId, TreeState } from "./types";
 
 function add(state: TreeState, parent: NodeId, title = ""): { state: TreeState; id: NodeId } {
@@ -63,5 +72,28 @@ describe("neighbourAfterDelete", () => {
     expect(neighbourAfterDelete(tree, a2)).toBe(a1);
     expect(neighbourAfterDelete(deleteBranch(tree, a), b)).toBe(root);
     expect(neighbourAfterDelete(tree, root)).toBeNull();
+  });
+});
+
+describe("deleteBranches", () => {
+  it("deletes each branch, skipping a node already gone with its ancestor", () => {
+    const { tree, root, a, a1, b } = sample();
+    const next = deleteBranches(tree, [a, a1, b]);
+    expect(Object.keys(next.nodes)).toEqual([root]);
+  });
+
+  it("still keeps the last root", () => {
+    const { tree, root } = sample();
+    expect(deleteBranches(tree, [root])).toBe(tree);
+  });
+});
+
+describe("setNodesColor", () => {
+  it("colours every listed node and leaves the others", () => {
+    const { tree, a, b, root } = sample();
+    const next = setNodesColor(tree, [a, b], "red");
+    expect(next.nodes[a].color).toBe("red");
+    expect(next.nodes[b].color).toBe("red");
+    expect(next.nodes[root].color).not.toBe("red");
   });
 });

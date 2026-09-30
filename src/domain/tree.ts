@@ -306,3 +306,18 @@ export function visibleSubtree(state: TreeState): { nodeIds: NodeId[]; edgeIds: 
   }
   return { nodeIds, edgeIds };
 }
+
+/** Deletes several branches as one edit. A node already gone with an
+    ancestor's branch is skipped; the last root still stays. */
+export function deleteBranches(state: TreeState, nodeIds: readonly NodeId[]): TreeState {
+  return nodeIds.reduce(deleteBranch, state);
+}
+
+/** Sets the same colour on several nodes; `null` clears it. */
+export function setNodesColor(
+  state: TreeState,
+  nodeIds: readonly NodeId[],
+  color: PaletteColor | null,
+): TreeState {
+  return nodeIds.reduce((s, id) => setNodeColor(s, id, color), state);
+}

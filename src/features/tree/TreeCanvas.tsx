@@ -14,7 +14,7 @@ import { layoutTree, type Size } from "../../domain/layout";
 import { alignViewport, revealViewport } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
-import { useTreeStore } from "../../store/treeStore";
+import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
 import { FRAME_MARGIN, LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
@@ -46,6 +46,12 @@ const edgeTypes = { tree: TreeEdgeView };
 function TreeCanvasInner() {
   const tree = useTreeStore((s) => s.tree);
   const selectedId = useTreeStore((s) => s.selectedId);
+  const selectedIds = useTreeStore((s) => s.selectedIds);
+  // The whole group, for highlighting (`selectedId` alone drives the camera).
+  const selectedSet = useMemo(
+    () => new Set(selectedId && selectedIds.includes(selectedId) ? selectedIds : selectedId ? [selectedId] : []),
+    [selectedId, selectedIds],
+  );
   const select = useTreeStore((s) => s.select);
   const addRoot = useTreeStore((s) => s.addRoot);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
@@ -164,7 +170,7 @@ function TreeCanvasInner() {
         type: "tree",
         position: positions.get(id) ?? targets.get(id) ?? { x: 0, y: 0 },
         data: {},
-        selected: id === selectedId,
+        selected: selectedSet.has(id),
         draggable: false,
         // Handing React Flow back the size it measured (normally done by
         // `applyNodeChanges`): these node objects are rebuilt every render,
@@ -176,7 +182,7 @@ function TreeCanvasInner() {
         initialWidth: TREE_LAYOUT.fallbackSize.width,
         initialHeight: TREE_LAYOUT.fallbackSize.height,
       })),
-    [nodeIds, positions, targets, selectedId, sizes],
+    [nodeIds, positions, targets, selectedSet, sizes],
   );
 
   const edges = useMemo<TreeFlowEdge[]>(
@@ -198,6 +204,19 @@ function TreeCanvasInner() {
   );
 
   const onNodesChange = useCallback((changes: NodeChange<TreeFlowNode>[]) => {
+    // The marquee: React Flow reports which nodes its box now covers as
+    // "select" changes; turn them into the store's group selection.
+    const picks = changes.filter((c) => c.type === "select");
+    if (picks.length > 0) {
+      const store = useTreeStore.getState();
+      const group = new Set(selectionOf(store));
+      for (const change of picks) {
+        if (change.type !== "select") continue;
+        if (change.selected) group.add(change.id as NodeId);
+        else group.delete(change.id as NodeId);
+      }
+      store.selectMany([...group]);
+    }
     setSizes((prev) => {
       let next: Map<NodeId, Size> | null = null;
       for (const change of changes) {
@@ -240,8 +259,10 @@ function TreeCanvasInner() {
           onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
           onPaneClick={() => select(null)}
           onDoubleClick={onCanvasDoubleClick}
-          // The laser owns the drag; select and hand pan with it.
-          panOnDrag={tool !== "laser"}
+          // Drag means: pan (hand), draw a marquee (select) or laser. The
+          // middle button still pans in select mode.
+          panOnDrag={tool === "hand" ? true : tool === "select" ? [1] : false}
+          selectionOnDrag={tool === "select"}
           nodesConnectable={false}
           nodesDraggable={false}
           // Double-click renames a node; zooming on it would fight that.

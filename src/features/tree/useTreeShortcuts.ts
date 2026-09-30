@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { arrowToMove, moveFrom, type ArrowKey } from "../../domain/navigation";
 import { parentEdgeOf } from "../../domain/tree";
 import { PALETTE_COLORS, type NodeId } from "../../domain/types";
-import { useTreeStore } from "../../store/treeStore";
+import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore, type Tool } from "../../store/viewStore";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -123,13 +123,18 @@ export function useTreeShortcuts() {
         store.toggleCollapsed(selectedId);
       } else if (key === "delete" || key === "backspace") {
         event.preventDefault();
-        if (event.shiftKey) store.deleteNode(selectedId);
+        // A marquee group deletes together (whole branches, one undo step).
+        const group = selectionOf(store);
+        if (group.length > 1) store.deleteBranches(group);
+        else if (event.shiftKey) store.deleteNode(selectedId);
         else store.deleteBranch(selectedId);
       } else if (/^[0-9]$/.test(key)) {
         // 1-8 pick a palette colour in its listed order; 0 clears it.
         const index = Number(key);
-        if (index === 0) store.setNodeColor(selectedId, null);
-        else if (index <= PALETTE_COLORS.length) store.setNodeColor(selectedId, PALETTE_COLORS[index - 1]);
+        if (index === 0) store.setNodesColor(selectionOf(store), null);
+        else if (index <= PALETTE_COLORS.length) {
+          store.setNodesColor(selectionOf(store), PALETTE_COLORS[index - 1]);
+        }
       } else if (key === "escape") {
         store.select(null);
       }
