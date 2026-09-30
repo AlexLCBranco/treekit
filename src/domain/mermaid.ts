@@ -4,12 +4,13 @@ import { PALETTE_COLORS, type EdgeId, type NodeId, type PaletteColor, type TreeS
 /**
  * Mermaid `flowchart` <-> tree. Pure text in, text or tree out.
  *
- * Export writes every node (folded branches included), the edge labels, the
+ * Export writes every node (folded branches included, and every tree on the board), the edge labels, the
  * direction and the node colours. Import understands the common flowchart
  * subset -- nodes with any bracket shape, `-->` / `---` / `==>` / `-.->`
  * links with `|label|` or `-- label -->` text, chains (`A --> B --> C`) and
  * `&` lists -- and refuses what a tree cannot hold (two parents, loops,
- * several starting points) with a message that names the offending node.
+ * several starting points: a board's other trees are exported, but import
+ * opens one tree) with a message that names the offending node.
  */
 
 /**
@@ -53,10 +54,10 @@ function escapeText(text: string): string {
 }
 
 export function toMermaid(state: TreeState): string {
-  // Short ids in reading order (depth-first, siblings in order).
+  // Short ids in reading order (depth-first, siblings in order, one root after the other).
   const ids = new Map<NodeId, string>();
   const order: NodeId[] = [];
-  const stack: NodeId[] = [state.rootId];
+  const stack: NodeId[] = state.roots.map((root) => root.id).reverse();
   let id: NodeId | undefined;
   while ((id = stack.pop()) !== undefined) {
     if (!state.nodes[id]) continue;
@@ -336,5 +337,5 @@ function parse(text: string): TreeState {
     const lost = [...draft.titles.keys()].find((id) => !nodeIds.has(id))!;
     throw new ImportError(`${name(lost)} is part of a loop that never connects to the start; a tree can't loop.`);
   }
-  return { rootId, ...state, direction };
+  return { roots: [{ id: rootId, x: 0, y: 0 }], ...state, direction };
 }

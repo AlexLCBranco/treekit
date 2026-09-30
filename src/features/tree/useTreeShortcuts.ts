@@ -38,7 +38,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   Ctrl/Cmd+Shift+Z, Ctrl+Y   redo
  * On the selected node:
  *   Arrows                     move to the parent, a child, or along the
- *                              row (any arrow selects the root if nothing is)
+ *                              row (any arrow selects the first root if nothing is)
  *   Tab                       add a child (and start naming it)
  *   Enter, F2                  rename
  *   L                          label the line leading into it
@@ -87,7 +87,7 @@ export function useTreeShortcuts() {
       if (event.key.startsWith("Arrow") && !event.shiftKey) {
         // Also stops the page scrolling.
         event.preventDefault();
-        if (!selectedId) return store.select(store.tree.rootId);
+        if (!selectedId) return store.select(store.tree.roots[0].id);
         const move = arrowToMove(event.key as ArrowKey, store.tree.direction);
         const target = moveFrom(store.tree, selectedId, move, lastChild.get(selectedId));
         if (target) store.select(target);

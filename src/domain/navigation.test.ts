@@ -19,7 +19,7 @@ function add(state: TreeState, parent: NodeId): { state: TreeState; id: NodeId }
  */
 function sample() {
   let tree = createTree();
-  const root = tree.rootId;
+  const root = tree.roots[0].id;
   let r = add(tree, root);
   const a = r.id;
   r = add(r.state, root);

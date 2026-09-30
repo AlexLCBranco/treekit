@@ -57,6 +57,7 @@ const GROUPS: readonly Group[] = [
     rows: [
       { description: "Select a node", combos: [["Click"]] },
       { description: "Rename a node, or label a line", combos: [["Double-click"]] },
+      { description: "Start another tree, on empty canvas", combos: [["Double-click"]] },
       { description: "Collapse or expand a branch", combos: [["Click −"], ["Click the count"]] },
       { description: "Colour or collapse a node", combos: [["Right-click"]] },
       { description: "Pan the canvas", combos: [["Drag"]] },

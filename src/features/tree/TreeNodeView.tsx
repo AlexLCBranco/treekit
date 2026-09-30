@@ -2,7 +2,7 @@ import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } f
 import { memo, useEffect, type CSSProperties } from "react";
 
 import { InlineEditable } from "../../components/InlineEditable";
-import { hiddenCount } from "../../domain/tree";
+import { hiddenCount, isRoot as isRootOf } from "../../domain/tree";
 import type { NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import styles from "./TreeNodeView.module.css";
@@ -26,7 +26,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   const nodeId = id as NodeId;
   const node = useTreeStore((s) => s.tree.nodes[nodeId]);
   const isEditing = useTreeStore((s) => s.editingId === nodeId);
-  const isRoot = useTreeStore((s) => s.tree.rootId === nodeId);
+  const isRoot = useTreeStore((s) => isRootOf(s.tree, nodeId));
   const direction = useTreeStore((s) => s.tree.direction);
   const childCount = useTreeStore((s) => s.tree.childEdges[nodeId]?.length ?? 0);
   const hidden = useTreeStore((s) =>

@@ -8,7 +8,7 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
 import { alignViewport, revealViewport } from "../../domain/navigation";
@@ -45,8 +45,9 @@ function TreeCanvasInner() {
   const tree = useTreeStore((s) => s.tree);
   const selectedId = useTreeStore((s) => s.selectedId);
   const select = useTreeStore((s) => s.select);
+  const addRoot = useTreeStore((s) => s.addRoot);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
-  const { getViewport, setViewport } = useReactFlow();
+  const { getViewport, setViewport, screenToFlowPosition } = useReactFlow();
   // React Flow's own store, read (not subscribed to) for the pane's size.
   const flowStore = useStoreApi();
 
@@ -209,6 +210,18 @@ function TreeCanvasInner() {
     });
   }, []);
 
+  // Double-clicking empty canvas starts another tree there, its first node
+  // centred under the pointer. Clicks that land on a node, a line, a button
+  // or the zoom pill are not on the pane, so they keep their own meaning.
+  const onCanvasDoubleClick = (event: MouseEvent) => {
+    if (!(event.target as HTMLElement).classList.contains("react-flow__pane")) return;
+    const point = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const { width, height } = TREE_LAYOUT.fallbackSize;
+    // A root's position is where its tree grows from: top-centre top-down,
+    // left-middle left-right. Nudge so the new node's middle is the click.
+    addRoot(...(tree.direction === "TB" ? [point.x, point.y - height / 2] : [point.x - width / 2, point.y]) as [number, number]);
+  };
+
   return (
     <NodeContextMenu>
       <div className={styles.canvas}>
@@ -222,6 +235,7 @@ function TreeCanvasInner() {
           onEdgeClick={(_, edge) => select(edge.target as NodeId)}
           onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
           onPaneClick={() => select(null)}
+          onDoubleClick={onCanvasDoubleClick}
           nodesConnectable={false}
           nodesDraggable={false}
           // Double-click renames a node; zooming on it would fight that.

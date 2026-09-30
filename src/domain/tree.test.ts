@@ -25,16 +25,16 @@ function add(state: TreeState, parent: NodeId, title = ""): { state: TreeState; 
 describe("tree operations", () => {
   it("creates a tree with only a root", () => {
     const tree = createTree("Root");
-    expect(Object.keys(tree.nodes)).toEqual([tree.rootId]);
-    expect(tree.nodes[tree.rootId].title).toBe("Root");
+    expect(Object.keys(tree.nodes)).toEqual([tree.roots[0].id]);
+    expect(tree.nodes[tree.roots[0].id].title).toBe("Root");
   });
 
   it("appends children in order and links them with edges", () => {
     let tree = createTree();
-    const first = add(tree, tree.rootId, "A");
-    const second = add(first.state, tree.rootId, "B");
+    const first = add(tree, tree.roots[0].id, "A");
+    const second = add(first.state, tree.roots[0].id, "B");
     tree = second.state;
-    expect(childrenOf(tree, tree.rootId)).toEqual([first.id, second.id]);
+    expect(childrenOf(tree, tree.roots[0].id)).toEqual([first.id, second.id]);
   });
 
   it("ignores a missing parent", () => {
@@ -44,11 +44,11 @@ describe("tree operations", () => {
 
   it("sets and clears a node's colour", () => {
     const tree = createTree();
-    const { state, id } = add(tree, tree.rootId);
+    const { state, id } = add(tree, tree.roots[0].id);
     const colored = setNodeColor(state, id, "red");
     expect(colored.nodes[id].color).toBe("red");
     // Only that node's record is new; the rest is shared.
-    expect(colored.nodes[state.rootId]).toBe(state.nodes[state.rootId]);
+    expect(colored.nodes[state.roots[0].id]).toBe(state.nodes[state.roots[0].id]);
     expect(colored.edges).toBe(state.edges);
     // No-ops return the same state, so the store records no undo step.
     expect(setNodeColor(colored, id, "red")).toBe(colored);
@@ -58,21 +58,21 @@ describe("tree operations", () => {
 
   it("only copies the slices it touches", () => {
     const tree = createTree();
-    const renamed = renameNode(tree, tree.rootId, "New");
+    const renamed = renameNode(tree, tree.roots[0].id, "New");
     expect(renamed.edges).toBe(tree.edges);
     expect(renamed.childEdges).toBe(tree.childEdges);
-    expect(renameNode(renamed, tree.rootId, "New")).toBe(renamed);
+    expect(renameNode(renamed, tree.roots[0].id, "New")).toBe(renamed);
   });
 
   it("hides the children of a collapsed node, and expands it on add", () => {
     let tree = createTree();
-    const child = add(tree, tree.rootId);
+    const child = add(tree, tree.roots[0].id);
     tree = add(child.state, child.id).state;
     tree = {
       ...tree,
       nodes: { ...tree.nodes, [child.id]: { ...tree.nodes[child.id], collapsed: true } },
     };
-    expect(visibleSubtree(tree).nodeIds).toEqual([tree.rootId, child.id]);
+    expect(visibleSubtree(tree).nodeIds).toEqual([tree.roots[0].id, child.id]);
 
     tree = add(tree, child.id).state;
     expect(tree.nodes[child.id].collapsed).toBe(false);
@@ -84,10 +84,10 @@ describe("collapse", () => {
   // root -> a -> b -> c, plus root -> d
   function chain() {
     const tree = createTree();
-    const a = add(tree, tree.rootId);
+    const a = add(tree, tree.roots[0].id);
     const b = add(a.state, a.id);
     const c = add(b.state, b.id);
-    const d = add(c.state, tree.rootId);
+    const d = add(c.state, tree.roots[0].id);
     return { tree: d.state, a: a.id, b: b.id, c: c.id, d: d.id };
   }
 
@@ -95,7 +95,7 @@ describe("collapse", () => {
     const { tree, a, d } = chain();
     const folded = setCollapsed(tree, a, true);
     expect(folded.nodes[a].collapsed).toBe(true);
-    expect(visibleSubtree(folded).nodeIds).toEqual([tree.rootId, a, d]);
+    expect(visibleSubtree(folded).nodeIds).toEqual([tree.roots[0].id, a, d]);
     expect(Object.keys(folded.nodes)).toHaveLength(5);
     expect(folded.edges).toBe(tree.edges);
 
@@ -116,7 +116,7 @@ describe("collapse", () => {
     const { tree, a, b } = chain();
     expect(hiddenCount(tree, a)).toBe(2);
     expect(hiddenCount(setCollapsed(tree, b, true), a)).toBe(2);
-    expect(hiddenCount(tree, tree.rootId)).toBe(4);
+    expect(hiddenCount(tree, tree.roots[0].id)).toBe(4);
     expect(hiddenCount(tree, "nope" as NodeId)).toBe(0);
   });
 
@@ -146,11 +146,11 @@ describe("layout", () => {
 
   it("places children below their parent, siblings side by side in order", () => {
     let tree = createTree();
-    const a = add(tree, tree.rootId);
-    const b = add(a.state, tree.rootId);
+    const a = add(tree, tree.roots[0].id);
+    const b = add(a.state, tree.roots[0].id);
     tree = b.state;
     const pos = layoutTree(tree, new Map(), options).positions;
-    const root = pos.get(tree.rootId)!;
+    const root = pos.get(tree.roots[0].id)!;
     const pa = pos.get(a.id)!;
     const pb = pos.get(b.id)!;
     expect(pa.y).toBeGreaterThan(root.y);
@@ -160,8 +160,8 @@ describe("layout", () => {
 
   it("never overlaps neighbouring subtrees, whatever their sizes", () => {
     let tree = createTree();
-    const a = add(tree, tree.rootId);
-    const b = add(a.state, tree.rootId);
+    const a = add(tree, tree.roots[0].id);
+    const b = add(a.state, tree.roots[0].id);
     const a1 = add(b.state, a.id);
     const a2 = add(a1.state, a.id);
     const b1 = add(a2.state, b.id);
@@ -176,17 +176,17 @@ describe("layout", () => {
 
   it("grows rightwards in LR mode", () => {
     let tree = createTree("R", "LR");
-    const a = add(tree, tree.rootId);
+    const a = add(tree, tree.roots[0].id);
     tree = a.state;
     const pos = layoutTree(tree, new Map(), options).positions;
-    expect(pos.get(a.id)!.x).toBeGreaterThan(pos.get(tree.rootId)!.x);
+    expect(pos.get(a.id)!.x).toBeGreaterThan(pos.get(tree.roots[0].id)!.x);
   });
 });
 
 describe("edge labels", () => {
   it("sets and clears a label, leaving other slices untouched", () => {
     const t0 = createTree();
-    const a = add(t0, t0.rootId);
+    const a = add(t0, t0.roots[0].id);
     const edge = parentEdgeOf(a.state, a.id)!;
     const labelled = setEdgeLabel(a.state, edge.id, "yes");
     expect(labelled.edges[edge.id].label).toBe("yes");
@@ -196,7 +196,7 @@ describe("edge labels", () => {
 
   it("returns the same state for no change or a missing edge", () => {
     const t0 = createTree();
-    const a = add(t0, t0.rootId);
+    const a = add(t0, t0.roots[0].id);
     const edge = parentEdgeOf(a.state, a.id)!;
     expect(setEdgeLabel(a.state, edge.id, "")).toBe(a.state);
     expect(setEdgeLabel(a.state, "nope" as never, "x")).toBe(a.state);
@@ -209,8 +209,8 @@ describe("layout with edge labels", () => {
   /** root -> [a, b], with label sizes set on the edges into a and b. */
   function labelled(direction: "TB" | "LR", sizes: [Size | null, Size | null]) {
     let tree = createTree("R", direction);
-    const a = add(tree, tree.rootId);
-    const b = add(a.state, tree.rootId);
+    const a = add(tree, tree.roots[0].id);
+    const b = add(a.state, tree.roots[0].id);
     tree = b.state;
     const labels = new Map<EdgeId, Size>();
     [a.id, b.id].forEach((id, i) => {
@@ -251,7 +251,7 @@ describe("layout with edge labels", () => {
     const { tree, a, labels } = labelled("TB", [{ width: 30, height: 20 }, null]);
     const { positions, routes } = layoutTree(tree, new Map(), options, labels);
     const route = routes.get(parentEdgeOf(tree, a)!.id)!;
-    const rootBottom = positions.get(tree.rootId)!.y + 40;
+    const rootBottom = positions.get(tree.roots[0].id)!.y + 40;
     const bend = rootBottom + route.bendAfterSource;
     const label = positions.get(a)!.y - route.labelBeforeTarget;
     expect(bend).toBe(rootBottom + options.rankGap / 2);

@@ -3,7 +3,7 @@ import { toPng, toSvg } from "html-to-image";
 
 import inlineStyles from "../../components/InlineEditable.module.css";
 import { layoutTree, type Size } from "../../domain/layout";
-import { expandAll, visibleSubtree } from "../../domain/tree";
+import { expandAll, isRoot, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId, TreeState } from "../../domain/types";
 import { TREE_LAYOUT } from "../tree/layoutConfig";
 import edgeStyles from "../tree/TreeEdgeView.module.css";
@@ -45,7 +45,7 @@ export async function renderTreeImage(tree: TreeState, format: ImageFormat): Pro
       const el = document.createElement("div");
       el.className = nodeStyles.node;
       el.dataset.direction = full.direction;
-      if (id === full.rootId) el.dataset.root = "";
+      if (isRoot(full, id)) el.dataset.root = "";
       if (node.color) {
         el.dataset.colored = "true";
         el.style.setProperty("--node-accent", `var(--palette-${node.color})`);

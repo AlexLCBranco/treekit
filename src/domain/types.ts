@@ -9,8 +9,8 @@
  * Edges are first-class records (not just a `parentId` on each node) because
  * they carry their own data -- a label like "yes" / "if he dies" -- and
  * because a Mermaid import can produce a node with two parents. For now the
- * domain keeps the tree invariant (every node except the root has exactly
- * one incoming edge); relaxing it later is a rule change, not a reshape.
+ * domain keeps the tree invariant (every node except a root has exactly
+ * one incoming edge; roots have none); relaxing it later is a rule change, not a reshape.
  */
 
 type Brand<T, B extends string> = T & { readonly __brand: B };
@@ -52,9 +52,21 @@ export interface TreeEdge {
 /** Which way the tree grows: top-to-bottom or left-to-right. */
 export type LayoutDirection = "TB" | "LR";
 
-/** One whole tree: everything that is saved and undone together. */
+/**
+ * A starting node and where it sits on the board: the point its tree grows
+ * from (top-down: the root's top-centre; left-right: its left-middle).
+ * A board can hold several roots; the first one is where every board starts.
+ */
+export interface TreeRoot {
+  readonly id: NodeId;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** One whole board: everything that is saved and undone together. */
 export interface TreeState {
-  readonly rootId: NodeId;
+  /** In creation order; never empty. */
+  readonly roots: readonly TreeRoot[];
   readonly nodes: Readonly<Record<NodeId, TreeNode>>;
   readonly edges: Readonly<Record<EdgeId, TreeEdge>>;
   /** Outgoing edges of each node, in sibling order. */

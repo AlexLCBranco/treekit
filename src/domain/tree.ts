@@ -12,11 +12,11 @@ function makeNode(title: string): TreeNode {
   return { id: createNodeId(), title, color: null, collapsed: false };
 }
 
-/** A fresh tree with just a root node. */
+/** A fresh tree with just a root node, at the board's origin. */
 export function createTree(rootTitle = "Decision", direction: LayoutDirection = "TB"): TreeState {
   const root = makeNode(rootTitle);
   return {
-    rootId: root.id,
+    roots: [{ id: root.id, x: 0, y: 0 }],
     nodes: { [root.id]: root },
     edges: {},
     childEdges: { [root.id]: [] },
@@ -57,6 +57,28 @@ export function addChild(
       },
     },
   };
+}
+
+/**
+ * Starts another tree on the same board, with its root at (`x`, `y`).
+ * Returns the new root's id (the UI selects it and opens it for naming).
+ */
+export function addRoot(state: TreeState, x: number, y: number, title = ""): { state: TreeState; nodeId: NodeId } {
+  const root = makeNode(title);
+  return {
+    nodeId: root.id,
+    state: {
+      ...state,
+      roots: [...state.roots, { id: root.id, x, y }],
+      nodes: { ...state.nodes, [root.id]: root },
+      childEdges: { ...state.childEdges, [root.id]: [] },
+    },
+  };
+}
+
+/** Whether `nodeId` starts one of the board's trees. */
+export function isRoot(state: TreeState, nodeId: NodeId): boolean {
+  return state.roots.some((root) => root.id === nodeId);
 }
 
 export function renameNode(state: TreeState, nodeId: NodeId, title: string): TreeState {
@@ -150,16 +172,28 @@ function omit<K extends string, V>(record: Readonly<Record<K, V>>, keys: Iterabl
 }
 
 /**
- * Deletes a node and its whole branch. The root cannot be deleted: a tree
- * always has one (deleting everything else is "delete each child").
+ * Deletes a node and its whole branch. Deleting a root removes that whole
+ * tree from the board -- except the last one: a board always keeps one root
+ * (deleting everything else is "delete each child").
  */
 export function deleteBranch(state: TreeState, nodeId: NodeId): TreeState {
-  const incoming = parentEdgeOf(state, nodeId);
-  if (!incoming || !state.nodes[nodeId]) return state;
-
+  if (!state.nodes[nodeId]) return state;
   const removedNodes = subtreeIds(state, nodeId);
-  const removedEdges = [incoming.id, ...removedNodes.flatMap((id) => state.childEdges[id] ?? [])];
+  const incoming = parentEdgeOf(state, nodeId);
 
+  if (!incoming) {
+    if (!isRoot(state, nodeId) || state.roots.length === 1) return state;
+    const removedEdges = removedNodes.flatMap((id) => state.childEdges[id] ?? []);
+    return {
+      ...state,
+      roots: state.roots.filter((root) => root.id !== nodeId),
+      nodes: omit(state.nodes, removedNodes),
+      edges: omit(state.edges, removedEdges),
+      childEdges: omit(state.childEdges, removedNodes),
+    };
+  }
+
+  const removedEdges = [incoming.id, ...removedNodes.flatMap((id) => state.childEdges[id] ?? [])];
   return {
     ...state,
     nodes: omit(state.nodes, removedNodes),
@@ -172,7 +206,8 @@ export function deleteBranch(state: TreeState, nodeId: NodeId): TreeState {
 }
 
 /**
- * Deletes just one node: its children move up to take its place among its
+ * Deletes just one node (never a root: its children would have no place to
+ * go; delete its branch instead): its children move up to take its place among its
  * parent's children, in the same order. Their own edge labels are kept; the
  * deleted node's incoming label goes with it.
  */
@@ -203,7 +238,11 @@ export function deleteNode(state: TreeState, nodeId: NodeId): TreeState {
  */
 export function neighbourAfterDelete(state: TreeState, nodeId: NodeId): NodeId | null {
   const incoming = parentEdgeOf(state, nodeId);
-  if (!incoming) return null;
+  if (!incoming) {
+    // A root: the next root along the board, else the previous one.
+    const index = state.roots.findIndex((root) => root.id === nodeId);
+    return (state.roots[index + 1] ?? state.roots[index - 1])?.id ?? null;
+  }
   const siblings = state.childEdges[incoming.source];
   const index = siblings.indexOf(incoming.id);
   const neighbour = siblings[index + 1] ?? siblings[index - 1];
@@ -235,7 +274,8 @@ export function cloneTree(state: TreeState): TreeState {
   for (const [id, list] of Object.entries(state.childEdges) as [NodeId, readonly EdgeId[]][]) {
     childEdges[nodeIds.get(id)!] = list.map((e) => edgeIds.get(e)!);
   }
-  return { rootId: nodeIds.get(state.rootId)!, nodes, edges, childEdges, direction: state.direction };
+  const roots = state.roots.map((root) => ({ ...root, id: nodeIds.get(root.id)! }));
+  return { roots, nodes, edges, childEdges, direction: state.direction };
 }
 
 /** Child node ids of `nodeId`, in sibling order. */
@@ -244,15 +284,15 @@ export function childrenOf(state: TreeState, nodeId: NodeId): NodeId[] {
 }
 
 /**
- * Everything drawn on the canvas: nodes reachable from the root without
+ * Everything drawn on the canvas: nodes reachable from any root without
  * passing through a collapsed node, and the edges between them, both in
- * depth-first sibling order (the layout relies on that order to keep
- * siblings where they were created).
+ * depth-first sibling order, one root after the other (the layout relies on
+ * that order to keep siblings where they were created).
  */
 export function visibleSubtree(state: TreeState): { nodeIds: NodeId[]; edgeIds: EdgeId[] } {
   const nodeIds: NodeId[] = [];
   const edgeIds: EdgeId[] = [];
-  const stack: NodeId[] = [state.rootId];
+  const stack: NodeId[] = state.roots.map((root) => root.id).reverse();
   let id: NodeId | undefined;
   while ((id = stack.pop()) !== undefined) {
     const node = state.nodes[id];

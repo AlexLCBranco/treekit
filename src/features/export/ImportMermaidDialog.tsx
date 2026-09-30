@@ -46,7 +46,7 @@ export function ImportMermaidDialog({ open, onOpenChange }: Props) {
       setError(result.error);
       return;
     }
-    const rootTitle = result.state.nodes[result.state.rootId].title.split("\n")[0].slice(0, 40);
+    const rootTitle = result.state.nodes[result.state.roots[0].id].title.split("\n")[0].slice(0, 40);
     importTree(rootTitle || "Imported tree", result.state);
     close(false);
   }

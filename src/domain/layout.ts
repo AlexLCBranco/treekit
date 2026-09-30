@@ -24,6 +24,9 @@ import type { EdgeId, NodeId, TreeState } from "./types";
  *  3. Children are placed left-to-right in order, their block centred on
  *     the parent.
  *
+ * A board can hold several roots. Each tree is laid out on its own, as if
+ * its root sat at the origin, then shifted to where that root was put.
+ *
  * Edge labels sit on the last straight stretch of their edge, just before
  * the child they describe. So each label counts twice: its depth widens the
  * gap in front of its child's generation (a "label band"), and its breadth
@@ -97,86 +100,96 @@ export function layoutTree(
     return Math.max(breadth(sizeOf(id)), label ? breadth(label) : 0);
   };
 
-  // 1. Depth of every node, how deep each level is, and how deep the label
-  // band in front of it is.
-  const level = new Map<NodeId, number>();
-  const levelDepth: number[] = [];
-  const labelBand: number[] = [];
-  const assignLevels = (id: NodeId, d: number) => {
-    level.set(id, d);
-    levelDepth[d] = Math.max(levelDepth[d] ?? 0, depthSize(sizeOf(id)));
-    const label = incomingLabel.get(id);
-    labelBand[d] = Math.max(labelBand[d] ?? 0, label ? depthSize(label) : 0);
-    for (const child of childrenOf(id)) assignLevels(child, d + 1);
-  };
-  assignLevels(state.rootId, 0);
-
-  // Between two levels: half the rank gap, the bend, the other half of the
-  // gap with the label band inside it, then the next level.
-  const levelStart: number[] = [];
-  let offset = 0;
-  for (let d = 0; d < levelDepth.length; d++) {
-    if (d > 0) offset += rankGap + labelBand[d];
-    levelStart[d] = offset;
-    offset += levelDepth[d];
-  }
-
-  // 2. Breadth of every subtree, bottom-up.
-  const subtreeBreadth = new Map<NodeId, number>();
-  const childBlock = new Map<NodeId, number>();
-  const measure = (id: NodeId): number => {
-    const children = childrenOf(id);
-    const block =
-      children.reduce((sum, child) => sum + measure(child), 0) +
-      nodeGap * Math.max(0, children.length - 1);
-    childBlock.set(id, block);
-    const size = Math.max(slotBreadthOf(id), block);
-    subtreeBreadth.set(id, size);
-    return size;
-  };
-  measure(state.rootId);
-
-  // 3. Place top-down: each node centred in its slot, its children's block
-  // centred under it.
   const positions = new Map<NodeId, Point>();
-  // Where each node's depth-axis span starts, kept for the edge routes.
-  const nearSide = new Map<NodeId, number>();
-  const place = (id: NodeId, slotStart: number) => {
-    const center = slotStart + subtreeBreadth.get(id)! / 2;
-    const d = level.get(id)!;
-    const along = center - breadth(sizeOf(id)) / 2;
-    // Top-down: centred within its row, so a short node sits level with
-    // tall ones. Left-right: flush with the column's start, so a narrow
-    // node stays close to its parent instead of floating mid-column.
-    const slack = levelDepth[d] - depthSize(sizeOf(id));
-    const across = levelStart[d] + (vertical ? slack / 2 : 0);
-    positions.set(id, vertical ? { x: along, y: across } : { x: across, y: along });
-    nearSide.set(id, across);
+  const routes = new Map<EdgeId, EdgeRoute>();
 
-    let cursor = center - childBlock.get(id)! / 2;
-    for (const child of childrenOf(id)) {
-      place(child, cursor);
-      cursor += subtreeBreadth.get(child)! + nodeGap;
+  const layoutRoot = (rootId: NodeId, origin: Point) => {
+    // 1. Depth of every node, how deep each level is, and how deep the label
+    // band in front of it is.
+    const level = new Map<NodeId, number>();
+    const levelDepth: number[] = [];
+    const labelBand: number[] = [];
+    const assignLevels = (id: NodeId, d: number) => {
+      level.set(id, d);
+      levelDepth[d] = Math.max(levelDepth[d] ?? 0, depthSize(sizeOf(id)));
+      const label = incomingLabel.get(id);
+      labelBand[d] = Math.max(labelBand[d] ?? 0, label ? depthSize(label) : 0);
+      for (const child of childrenOf(id)) assignLevels(child, d + 1);
+    };
+    assignLevels(rootId, 0);
+
+    // Between two levels: half the rank gap, the bend, the other half of the
+    // gap with the label band inside it, then the next level.
+    const levelStart: number[] = [];
+    let offset = 0;
+    for (let d = 0; d < levelDepth.length; d++) {
+      if (d > 0) offset += rankGap + labelBand[d];
+      levelStart[d] = offset;
+      offset += levelDepth[d];
+    }
+
+    // 2. Breadth of every subtree, bottom-up.
+    const subtreeBreadth = new Map<NodeId, number>();
+    const childBlock = new Map<NodeId, number>();
+    const measure = (id: NodeId): number => {
+      const children = childrenOf(id);
+      const block =
+        children.reduce((sum, child) => sum + measure(child), 0) + nodeGap * Math.max(0, children.length - 1);
+      childBlock.set(id, block);
+      const size = Math.max(slotBreadthOf(id), block);
+      subtreeBreadth.set(id, size);
+      return size;
+    };
+    measure(rootId);
+
+    // 3. Place top-down: each node centred in its slot, its children's block
+    // centred under it.
+    // Where each node's depth-axis span starts, kept for the edge routes.
+    const nearSide = new Map<NodeId, number>();
+    const place = (id: NodeId, slotStart: number) => {
+      const center = slotStart + subtreeBreadth.get(id)! / 2;
+      const d = level.get(id)!;
+      const along = center - breadth(sizeOf(id)) / 2;
+      // Top-down: centred within its row, so a short node sits level with
+      // tall ones. Left-right: flush with the column's start, so a narrow
+      // node stays close to its parent instead of floating mid-column.
+      const slack = levelDepth[d] - depthSize(sizeOf(id));
+      const across = levelStart[d] + (vertical ? slack / 2 : 0);
+      positions.set(
+        id,
+        vertical
+          ? { x: origin.x + along, y: origin.y + across }
+          : { x: origin.x + across, y: origin.y + along },
+      );
+      nearSide.set(id, across);
+
+      let cursor = center - childBlock.get(id)! / 2;
+      for (const child of childrenOf(id)) {
+        place(child, cursor);
+        cursor += subtreeBreadth.get(child)! + nodeGap;
+      }
+    };
+    // Start so the root is centred on 0: stable as the tree grows sideways.
+    place(rootId, -subtreeBreadth.get(rootId)! / 2);
+
+    // 4. Edge routes. The bend sits half a rank gap past the end of the
+    // parent's level; the label is centred between the bend and the child's
+    // level, which leaves a quarter rank gap either side of the tallest one.
+    for (const edgeId of edgeIds) {
+      const { source, target } = state.edges[edgeId];
+      const d = level.get(target);
+      if (d === undefined) continue; // belongs to another root's tree
+      const parentLevelEnd = levelStart[d - 1] + levelDepth[d - 1];
+      const sourceEnd = nearSide.get(source)! + depthSize(sizeOf(source));
+      const labelCenter = levelStart[d] - (rankGap / 2 + labelBand[d]) / 2;
+      routes.set(edgeId, {
+        bendAfterSource: parentLevelEnd + rankGap / 2 - sourceEnd,
+        labelBeforeTarget: nearSide.get(target)! - labelCenter,
+      });
     }
   };
-  // Start so the root is centred on 0: stable as the tree grows sideways.
-  place(state.rootId, -subtreeBreadth.get(state.rootId)! / 2);
 
-  // 4. Edge routes. The bend sits half a rank gap past the end of the
-  // parent's level; the label is centred between the bend and the child's
-  // level, which leaves a quarter rank gap either side of the tallest one.
-  const routes = new Map<EdgeId, EdgeRoute>();
-  for (const edgeId of edgeIds) {
-    const { source, target } = state.edges[edgeId];
-    const d = level.get(target)!;
-    const parentLevelEnd = levelStart[d - 1] + levelDepth[d - 1];
-    const sourceEnd = nearSide.get(source)! + depthSize(sizeOf(source));
-    const labelCenter = levelStart[d] - (rankGap / 2 + labelBand[d]) / 2;
-    routes.set(edgeId, {
-      bendAfterSource: parentLevelEnd + rankGap / 2 - sourceEnd,
-      labelBeforeTarget: nearSide.get(target)! - labelCenter,
-    });
-  }
+  for (const root of state.roots) layoutRoot(root.id, root);
 
   return { positions, routes };
 }

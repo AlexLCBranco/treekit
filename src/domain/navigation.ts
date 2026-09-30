@@ -39,7 +39,7 @@ export function arrowToMove(key: ArrowKey, direction: LayoutDirection): TreeMove
 }
 
 /**
- * The node a move lands on, or `null` if there is nowhere to go (the root
+ * The node a move lands on, or `null` if there is nowhere to go (a root
  * has no parent, a leaf or folded node no visible child, a row has ends).
  *
  *  - parent: the node above.
@@ -72,18 +72,29 @@ export function moveFrom(
 }
 
 /**
- * The visible nodes in the same generation as `nodeId`, in drawing order.
- * `visibleSubtree` lists nodes depth-first in sibling order, which puts
- * each generation left-to-right (top-to-bottom in left-right trees).
+ * The visible nodes in the same generation of the same tree as `nodeId`, in
+ * drawing order. `visibleSubtree` lists nodes depth-first in sibling order,
+ * which puts each generation left-to-right (top-to-bottom in left-right
+ * trees). A board's separate trees are not walked between: where they sit
+ * is up to the user, so there is no meaningful "next" root.
  */
 function rowOf(state: TreeState, nodeId: NodeId): NodeId[] {
-  const depth = new Map<NodeId, number>([[state.rootId, 0]]);
+  const depth = new Map<NodeId, number>();
+  const rootOf = new Map<NodeId, NodeId>();
+  for (const { id } of state.roots) {
+    depth.set(id, 0);
+    rootOf.set(id, id);
+  }
   const { nodeIds } = visibleSubtree(state);
   for (const id of nodeIds) {
-    for (const child of childrenOf(state, id)) depth.set(child, depth.get(id)! + 1);
+    for (const child of childrenOf(state, id)) {
+      depth.set(child, depth.get(id)! + 1);
+      rootOf.set(child, rootOf.get(id)!);
+    }
   }
   const target = depth.get(nodeId);
-  return nodeIds.filter((id) => depth.get(id) === target);
+  const root = rootOf.get(nodeId);
+  return nodeIds.filter((id) => depth.get(id) === target && rootOf.get(id) === root);
 }
 
 /** The camera, as React Flow describes it: screen = flow * zoom + (x, y). */

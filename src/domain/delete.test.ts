@@ -12,11 +12,11 @@ function add(state: TreeState, parent: NodeId, title = ""): { state: TreeState; 
 /** root -> [a -> [a1, a2], b] */
 function sample() {
   const t0 = createTree("root");
-  const a = add(t0, t0.rootId, "a");
+  const a = add(t0, t0.roots[0].id, "a");
   const a1 = add(a.state, a.id, "a1");
   const a2 = add(a1.state, a.id, "a2");
-  const b = add(a2.state, t0.rootId, "b");
-  return { tree: b.state, root: t0.rootId, a: a.id, a1: a1.id, a2: a2.id, b: b.id };
+  const b = add(a2.state, t0.roots[0].id, "b");
+  return { tree: b.state, root: t0.roots[0].id, a: a.id, a1: a1.id, a2: a2.id, b: b.id };
 }
 
 describe("deleteBranch", () => {

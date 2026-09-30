@@ -31,9 +31,9 @@ const titles = (state: TreeState, ids: readonly NodeId[]) => ids.map((id) => sta
 describe("toMermaid", () => {
   it("writes direction, nodes, labelled edges and colours", () => {
     let tree = createTree("Start");
-    const a = addChild(tree, tree.rootId, "Yes")!;
+    const a = addChild(tree, tree.roots[0].id, "Yes")!;
     tree = a.state;
-    tree = setEdgeLabel(tree, tree.childEdges[tree.rootId][0], "if he dies");
+    tree = setEdgeLabel(tree, tree.childEdges[tree.roots[0].id][0], "if he dies");
     tree = setNodeColor(tree, a.nodeId!, "red");
     tree = setDirection(tree, "LR");
     expect(toMermaid(tree)).toBe(
@@ -50,9 +50,9 @@ describe("toMermaid", () => {
 
   it("includes branches that are folded away", () => {
     let tree = createTree("Root");
-    const child = addChild(tree, tree.rootId, "Kid");
+    const child = addChild(tree, tree.roots[0].id, "Kid");
     tree = addChild(child.state, child.nodeId!, "Grandkid").state;
-    tree = setCollapsed(tree, tree.rootId, true);
+    tree = setCollapsed(tree, tree.roots[0].id, true);
     expect(toMermaid(tree)).toContain("Grandkid");
   });
 });
@@ -60,27 +60,27 @@ describe("toMermaid", () => {
 describe("round trip", () => {
   it("keeps titles, order, labels, colours and direction", () => {
     let tree = createTree('He said "hi" <b> #1\nsecond line');
-    const a = addChild(tree, tree.rootId, "A");
-    const b = addChild(a.state, tree.rootId, "B | pipe");
+    const a = addChild(tree, tree.roots[0].id, "A");
+    const b = addChild(a.state, tree.roots[0].id, "B | pipe");
     const c = addChild(b.state, a.nodeId!, "");
-    tree = setEdgeLabel(c.state, c.state.childEdges[tree.rootId][1], 'say "no" | never');
+    tree = setEdgeLabel(c.state, c.state.childEdges[tree.roots[0].id][1], 'say "no" | never');
     tree = setNodeColor(tree, b.nodeId!, "purple");
     tree = setDirection(tree, "LR");
 
     const back = parsed(toMermaid(tree));
     expect(back.direction).toBe("LR");
-    expect(back.nodes[back.rootId].title).toBe('He said "hi" <b> #1\nsecond line');
-    const [a2, b2] = childrenOf(back, back.rootId);
+    expect(back.nodes[back.roots[0].id].title).toBe('He said "hi" <b> #1\nsecond line');
+    const [a2, b2] = childrenOf(back, back.roots[0].id);
     expect(titles(back, [a2, b2])).toEqual(["A", "B | pipe"]);
     expect(back.nodes[b2].color).toBe("purple");
-    expect(back.edges[back.childEdges[back.rootId][1]].label).toBe('say "no" | never');
+    expect(back.edges[back.childEdges[back.roots[0].id][1]].label).toBe('say "no" | never');
     expect(titles(back, childrenOf(back, a2))).toEqual([""]);
   });
 
   it("does not carry folding over", () => {
     let tree = createTree("Root");
-    tree = addChild(tree, tree.rootId, "Kid").state;
-    tree = setCollapsed(tree, tree.rootId, true);
+    tree = addChild(tree, tree.roots[0].id, "Kid").state;
+    tree = setCollapsed(tree, tree.roots[0].id, true);
     const back = parsed(toMermaid(tree));
     expect(Object.values(back.nodes).some((n) => n.collapsed)).toBe(false);
     expect(Object.keys(back.nodes)).toHaveLength(2);
@@ -99,8 +99,8 @@ describe("fromMermaid", () => {
       E -.-> G
       E --- H
     `);
-    expect(tree.nodes[tree.rootId].title).toBe("Start");
-    const [b] = childrenOf(tree, tree.rootId);
+    expect(tree.nodes[tree.roots[0].id].title).toBe("Start");
+    const [b] = childrenOf(tree, tree.roots[0].id);
     const [c] = childrenOf(tree, b);
     expect(titles(tree, childrenOf(tree, c))).toEqual(["Circle", "Quoted (text)"]);
     expect(tree.edges[tree.childEdges[c][0]].label).toBe("yes");
@@ -112,32 +112,32 @@ describe("fromMermaid", () => {
   it("supports & lists, LR/RL as left-right and a bare id as its own title", () => {
     const tree = parsed("flowchart RL\n  A --> B & C");
     expect(tree.direction).toBe("LR");
-    expect(titles(tree, childrenOf(tree, tree.rootId))).toEqual(["B", "C"]);
+    expect(titles(tree, childrenOf(tree, tree.roots[0].id))).toEqual(["B", "C"]);
   });
 
   it("accepts a single node and front matter", () => {
     const tree = parsed("---\ntitle: Demo\n---\nflowchart TD\n  only[Only]");
     expect(Object.keys(tree.nodes)).toHaveLength(1);
-    expect(tree.nodes[tree.rootId].title).toBe("Only");
+    expect(tree.nodes[tree.roots[0].id].title).toBe("Only");
   });
 
   it("uses a later definition's text for a node first seen bare", () => {
     const tree = parsed("flowchart TD\n  A --> B\n  B[Better name]");
-    expect(titles(tree, childrenOf(tree, tree.rootId))).toEqual(["Better name"]);
+    expect(titles(tree, childrenOf(tree, tree.roots[0].id))).toEqual(["Better name"]);
   });
 
   it("ignores styling it does not understand and reads palette strokes", () => {
     const tree = parsed(
       "flowchart TD\n A --> B\n classDef x fill:#f00\n class B x\n linkStyle 0 stroke:red\n style B fill:#fff,stroke:#2F9E44\n style A fill:#fff,stroke:#123456",
     );
-    expect(tree.nodes[tree.rootId].color).toBeNull();
-    expect(tree.nodes[childrenOf(tree, tree.rootId)[0]].color).toBe("green");
+    expect(tree.nodes[tree.roots[0].id].color).toBeNull();
+    expect(tree.nodes[childrenOf(tree, tree.roots[0].id)[0]].color).toBe("green");
   });
 
   it("merges duplicate links between the same nodes", () => {
     const tree = parsed("flowchart TD\n A --> B\n A -->|later| B");
-    expect(tree.childEdges[tree.rootId]).toHaveLength(1);
-    expect(tree.edges[tree.childEdges[tree.rootId][0]].label).toBe("later");
+    expect(tree.childEdges[tree.roots[0].id]).toHaveLength(1);
+    expect(tree.edges[tree.childEdges[tree.roots[0].id][0]].label).toBe("later");
   });
 
   it("rejects text that is not a flowchart", () => {
@@ -168,12 +168,12 @@ describe("fromMermaid", () => {
 describe("expandAll", () => {
   it("unfolds every node without touching anything else", () => {
     let tree = createTree("Root");
-    const child = addChild(tree, tree.rootId, "Kid");
-    tree = setCollapsed(child.state, tree.rootId, true);
+    const child = addChild(tree, tree.roots[0].id, "Kid");
+    tree = setCollapsed(child.state, tree.roots[0].id, true);
     const open = expandAll(tree);
-    expect(open.nodes[tree.rootId].collapsed).toBe(false);
+    expect(open.nodes[tree.roots[0].id].collapsed).toBe(false);
     expect(open.edges).toBe(tree.edges);
     expect(expandAll(open)).toBe(open);
-    expect(renameNode(open, tree.rootId, "X")).not.toBe(open);
+    expect(renameNode(open, tree.roots[0].id, "X")).not.toBe(open);
   });
 });

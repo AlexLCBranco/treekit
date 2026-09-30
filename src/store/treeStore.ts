@@ -55,6 +55,9 @@ interface TreeStore {
   readonly editingEdgeId: EdgeId | null;
 
   addChild: (parentId: NodeId) => void;
+  /** Starts another tree on the same board, its root at this board point,
+      and opens it for naming. */
+  addRoot: (x: number, y: number) => void;
   renameNode: (nodeId: NodeId, title: string) => void;
   /** Sets a node's palette colour; `null` clears it. */
   setNodeColor: (nodeId: NodeId, color: PaletteColor | null) => void;
@@ -63,7 +66,8 @@ interface TreeStore {
   toggleCollapsed: (nodeId: NodeId) => void;
   /** Sets an edge's label; an empty string removes it. */
   setEdgeLabel: (edgeId: EdgeId, label: string) => void;
-  /** Deletes the node and everything below it. */
+  /** Deletes the node and everything below it (a root takes its whole tree
+      off the board; the last root stays). */
   deleteBranch: (nodeId: NodeId) => void;
   /** Deletes only the node; its children move up to its parent. */
   deleteNode: (nodeId: NodeId) => void;
@@ -174,6 +178,12 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
       if (!nodeId) return s;
       // The new node is selected and opened for renaming straight away, so
       // "add, type, Enter" is one fluid motion -- and one undo step.
+      return { ...commit(s, state), newNodeId: nodeId, selectedId: nodeId, editingId: nodeId };
+    }),
+
+  addRoot: (x, y) =>
+    set((s) => {
+      const { state, nodeId } = tree.addRoot(s.tree, x, y);
       return { ...commit(s, state), newNodeId: nodeId, selectedId: nodeId, editingId: nodeId };
     }),
 
