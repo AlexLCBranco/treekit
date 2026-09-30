@@ -20,3 +20,7 @@ export const LAYOUT_TWEEN_MS = 220;
 export const REVEAL_MARGIN = 56;
 /** Same length as the glide, so camera and node arrive together. */
 export const REVEAL_PAN_MS = LAYOUT_TWEEN_MS;
+
+/** Distance (screen pixels) between the tree and the page edge it is aligned
+    to. Leaves room for the header controls, zoom buttons and version badge. */
+export const FRAME_MARGIN = 72;

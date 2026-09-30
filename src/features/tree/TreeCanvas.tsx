@@ -12,12 +12,12 @@ import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
-import { revealViewport } from "../../domain/navigation";
+import { alignViewport, revealViewport } from "../../domain/navigation";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
-import { LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
+import { FRAME_MARGIN, LAYOUT_TWEEN_MS, REVEAL_MARGIN, REVEAL_PAN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
@@ -46,7 +46,7 @@ function TreeCanvasInner() {
   const selectedId = useTreeStore((s) => s.selectedId);
   const select = useTreeStore((s) => s.select);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
-  const { fitView, getViewport, setViewport } = useReactFlow();
+  const { getViewport, setViewport } = useReactFlow();
   // React Flow's own store, read (not subscribed to) for the pane's size.
   const flowStore = useStoreApi();
 
@@ -72,10 +72,9 @@ function TreeCanvasInner() {
   const { nodeIds, edgeIds } = useMemo(() => visibleSubtree(tree), [tree]);
   const allMeasured = nodeIds.every((id) => sizes.has(id));
 
-  const align = useViewStore((s) => s.alignment);
   const { positions: targets, routes } = useMemo(
-    () => layoutTree(tree, sizes, { ...TREE_LAYOUT, align }, labelSizes),
-    [tree, sizes, labelSizes, align],
+    () => layoutTree(tree, sizes, TREE_LAYOUT, labelSizes),
+    [tree, sizes, labelSizes],
   );
 
   // The first layout snaps into place; from then on, every change glides.
@@ -86,6 +85,31 @@ function TreeCanvasInner() {
 
   const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
   const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
+
+  // Put the whole tree against the page as the Align panel says, never
+  // zoomed in past 100%. Reads the alignment at call time so it always
+  // follows the latest choice.
+  const frame = useCallback(
+    (duration: number) => {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const [id, p] of targets) {
+        const size = sizes.get(id) ?? TREE_LAYOUT.fallbackSize;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x + size.width);
+        maxY = Math.max(maxY, p.y + size.height);
+      }
+      if (minX === Infinity) return;
+      const { width, height } = flowStore.getState();
+      const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      const { alignment } = useViewStore.getState();
+      void setViewport(alignViewport(bounds, { width, height }, alignment, FRAME_MARGIN, 1), { duration });
+    },
+    [setViewport, flowStore, targets, sizes],
+  );
 
   // Frame the tree once it first has real sizes, capped at 100% so a lone
   // root is not blown up to fill the screen.
@@ -98,8 +122,18 @@ function TreeCanvasInner() {
     // The fit shows the whole tree, selection included; revealing it too
     // would pan from the not-yet-fitted camera and fight the fit.
     revealedId.current = useTreeStore.getState().selectedId;
-    requestAnimationFrame(() => void fitView({ maxZoom: 1, padding: 0.3 }));
-  }, [hasSettled, fitView]);
+    requestAnimationFrame(() => frame(0));
+  }, [hasSettled, frame]);
+
+  // Pressing an Align icon re-frames the tree with a glide (the first
+  // frame above handles page load).
+  const applied = useViewStore((s) => s.applied);
+  const lastApplied = useRef(applied);
+  useEffect(() => {
+    if (lastApplied.current === applied) return;
+    lastApplied.current = applied;
+    if (hasSettled) frame(REVEAL_PAN_MS);
+  }, [applied, hasSettled, frame]);
 
   // Keep the selection in view: when a different node gets selected (arrow
   // keys, a new child, the selection moving after a delete or undo), pan

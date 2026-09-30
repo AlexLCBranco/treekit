@@ -40,29 +40,6 @@ export interface Point {
   readonly y: number;
 }
 
-/** Start / middle / end of an axis: left-centre-right, or top-middle-bottom. */
-export type Align = "start" | "center" | "end";
-
-/** Alignment on the page's own axes, like Excalidraw's Align panel. `null`
-    = the direction's default look. */
-export interface Alignment {
-  readonly x: Align | null;
-  readonly y: Align | null;
-}
-
-/**
- * What the layout does for each axis. Defaults match the original look:
- * top-down centres parents over their children and rows of nodes; left-right
- * keeps each column flush with its start, so a narrow node stays close to
- * its parent instead of floating mid-column.
- */
-export function resolveAlignment(direction: TreeState["direction"], align: Alignment) {
-  return { x: align.x ?? (direction === "TB" ? "center" : "start"), y: align.y ?? "center" } as {
-    x: Align;
-    y: Align;
-  };
-}
-
 export interface LayoutOptions {
   /** Gap between siblings (and between neighbouring subtrees). */
   readonly nodeGap: number;
@@ -70,9 +47,6 @@ export interface LayoutOptions {
   readonly rankGap: number;
   /** Used for a node that has not been measured yet. */
   readonly fallbackSize: Size;
-  /** Alignment of parents over their children (across) and of nodes of
-      different sizes within a generation (along). */
-  readonly align?: Alignment;
 }
 
 /**
@@ -102,11 +76,6 @@ export function layoutTree(
 ): TreeLayout {
   const { nodeGap, rankGap, fallbackSize } = options;
   const vertical = state.direction === "TB";
-  const resolved = resolveAlignment(state.direction, options.align ?? { x: null, y: null });
-  // Breadth = the axis siblings spread along; depth = the axis it grows on.
-  const breadthAlign = vertical ? resolved.x : resolved.y;
-  const depthAlign = vertical ? resolved.y : resolved.x;
-  const shareOf = (a: Align) => (a === "start" ? 0 : a === "center" ? 0.5 : 1);
   const { nodeIds, edgeIds } = visibleSubtree(state);
   const visible = new Set(nodeIds);
 
@@ -173,21 +142,18 @@ export function layoutTree(
   // Where each node's depth-axis span starts, kept for the edge routes.
   const nearSide = new Map<NodeId, number>();
   const place = (id: NodeId, slotStart: number) => {
-    const slot = subtreeBreadth.get(id)!;
-    const own = slotBreadthOf(id);
-    const share = shareOf(breadthAlign);
-    // The node and its children's block each sit at the slot's start,
-    // middle or end. Only one of them is narrower than the slot.
-    const center = slotStart + own / 2 + (slot - own) * share;
+    const center = slotStart + subtreeBreadth.get(id)! / 2;
     const d = level.get(id)!;
     const along = center - breadth(sizeOf(id)) / 2;
+    // Top-down: centred within its row, so a short node sits level with
+    // tall ones. Left-right: flush with the column's start, so a narrow
+    // node stays close to its parent instead of floating mid-column.
     const slack = levelDepth[d] - depthSize(sizeOf(id));
-    const across = levelStart[d] + slack * shareOf(depthAlign);
+    const across = levelStart[d] + (vertical ? slack / 2 : 0);
     positions.set(id, vertical ? { x: along, y: across } : { x: across, y: along });
     nearSide.set(id, across);
 
-    const block = childBlock.get(id)!;
-    let cursor = slotStart + (slot - block) * share;
+    let cursor = center - childBlock.get(id)! / 2;
     for (const child of childrenOf(id)) {
       place(child, cursor);
       cursor += subtreeBreadth.get(child)! + nodeGap;

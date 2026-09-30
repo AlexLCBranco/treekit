@@ -121,3 +121,34 @@ export function revealViewport(
   const dy = shift(position.y * zoom + viewport.y, size.height * zoom, screen.height);
   return dx === 0 && dy === 0 ? null : { x: viewport.x + dx, y: viewport.y + dy, zoom };
 }
+
+export interface Rect extends Point, Size {}
+
+/** Start / middle / end of an axis: left-centre-right, or top-middle-bottom. */
+export type Align = "start" | "center" | "end";
+
+/**
+ * The camera that puts a rectangle (the whole tree) against the page:
+ * flush to the left / centred / flush to the right, and independently to the
+ * top / middle / bottom, always `margin` pixels in from the edge. Zooms out
+ * (never in past `maxZoom`) only as far as needed for it all to fit.
+ */
+export function alignViewport(
+  bounds: Rect,
+  screen: Size,
+  align: { x: Align; y: Align },
+  margin: number,
+  maxZoom: number,
+): Viewport {
+  const fit = Math.min((screen.width - 2 * margin) / bounds.width, (screen.height - 2 * margin) / bounds.height);
+  const zoom = Math.max(0.01, Math.min(maxZoom, fit));
+  const place = (start: number, size: number, room: number, a: Align) => {
+    const free = room - size * zoom - 2 * margin;
+    return margin + (a === "start" ? 0 : a === "center" ? free / 2 : free) - start * zoom;
+  };
+  return {
+    x: place(bounds.x, bounds.width, screen.width, align.x),
+    y: place(bounds.y, bounds.height, screen.height, align.y),
+    zoom,
+  };
+}

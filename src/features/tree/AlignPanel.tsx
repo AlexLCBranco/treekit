@@ -9,8 +9,7 @@ import {
 } from "lucide-react";
 import { Popover } from "radix-ui";
 
-import { resolveAlignment, type Align } from "../../domain/layout";
-import { useTreeStore } from "../../store/treeStore";
+import type { Align } from "../../domain/navigation";
 import { useViewStore } from "../../store/viewStore";
 import styles from "./AlignPanel.module.css";
 
@@ -34,15 +33,14 @@ const ROWS: { axis: "x" | "y"; options: { value: Align; label: string; Icon: Luc
 ];
 
 /**
- * Excalidraw-style Align panel. Top row: how parents sit over their
- * children (top-down) or how columns line up (left-right) horizontally;
- * bottom row: the same vertically. The layout re-runs and nodes glide.
+ * Excalidraw-style Align panel for the whole tree against the page. Top row:
+ * flush left / centred / flush right; bottom row: top / middle / bottom.
+ * The camera glides to the chosen spot.
  */
 export function AlignPanel() {
-  const direction = useTreeStore((s) => s.tree.direction);
   const alignment = useViewStore((s) => s.alignment);
   const setAlign = useViewStore((s) => s.setAlign);
-  const current = resolveAlignment(direction, alignment);
+  const current = alignment;
 
   return (
     <Popover.Root>
