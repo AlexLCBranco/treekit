@@ -174,13 +174,18 @@ export function layoutTree(
     // 4. Edge routes. The bend sits half a rank gap past the end of the
     // parent's level; the label is centred between the bend and the child's
     // level, which leaves a quarter rank gap either side of the tallest one.
+    // An only child's line runs straight with nothing fanning out at the
+    // bend, so its label is centred in the whole gap instead.
     for (const edgeId of edgeIds) {
       const { source, target } = state.edges[edgeId];
       const d = level.get(target);
       if (d === undefined) continue; // belongs to another root's tree
       const parentLevelEnd = levelStart[d - 1] + levelDepth[d - 1];
       const sourceEnd = nearSide.get(source)! + depthSize(sizeOf(source));
-      const labelCenter = levelStart[d] - (rankGap / 2 + labelBand[d]) / 2;
+      const labelCenter =
+        childrenOf(source).length === 1
+          ? (sourceEnd + nearSide.get(target)!) / 2
+          : levelStart[d] - (rankGap / 2 + labelBand[d]) / 2;
       routes.set(edgeId, {
         bendAfterSource: parentLevelEnd + rankGap / 2 - sourceEnd,
         labelBeforeTarget: nearSide.get(target)! - labelCenter,

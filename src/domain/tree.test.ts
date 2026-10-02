@@ -260,6 +260,21 @@ describe("layout with edge labels", () => {
     expect(label - 10 - bend).toBe(positions.get(a)!.y - (label + 10));
   });
 
+  it("centres an only child's label in the whole gap between parent and child", () => {
+    let tree = createTree("R", "LR");
+    const a = add(tree, tree.roots[0]);
+    tree = a.state;
+    const edge = parentEdgeOf(tree, a.id)!;
+    tree = setEdgeLabel(tree, edge.id, "label");
+    const sizes = new Map([[tree.roots[0], { width: 100, height: 40 }]]);
+    const labels = new Map([[edge.id, { width: 60, height: 20 }]]);
+    const { positions, routes } = layoutTree(tree, sizes, options, labels);
+    const rootRight = positions.get(tree.roots[0])!.x + 100;
+    const childLeft = positions.get(a.id)!.x;
+    const label = childLeft - routes.get(edge.id)!.labelBeforeTarget;
+    expect(label - 30 - rootRight).toBe(childLeft - (label + 30));
+  });
+
   it("uses label widths for the gap in LR mode", () => {
     const plain = labelled("LR", [null, null]);
     const withLabel = labelled("LR", [null, { width: 60, height: 18 }]);

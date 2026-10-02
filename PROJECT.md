@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-09-30, v0.0.30_
+_Last updated: 2026-10-02, v0.0.31_
 
 ## What it is
 
@@ -92,8 +92,8 @@ with Vitest tests.
 - Edge labels ("yes", "if he dies"): select a node and press L, or
   double-click a line or its label, to label the line leading into it;
   clearing the text removes the label. Labels sit just before the child
-  they describe, the layout makes room for them, and they light up with
-  the selected node
+  they describe (or in the middle of the line for an only child), the
+  layout makes room for them, and they light up with the selected node
 - Colours: right-click a node for a menu of 8 fixed colours (or none), or
   select it and press 1–8 (0 clears). The node gets a tint and border in
   that colour; lines stay neutral, and new children start uncoloured
