@@ -133,6 +133,15 @@ export function setCollapsed(state: TreeState, nodeId: NodeId, collapsed: boolea
   return { ...state, nodes: { ...state.nodes, [nodeId]: { ...node, collapsed } } };
 }
 
+/** Folds every given node that has children, or, if all of those already
+    are folded, unfolds them (Space on a marquee group). Leaves are ignored. */
+export function toggleCollapsedNodes(state: TreeState, nodeIds: readonly NodeId[]): TreeState {
+  const foldable = nodeIds.filter((id) => state.nodes[id] && (state.childEdges[id] ?? []).length > 0);
+  if (foldable.length === 0) return state;
+  const allFolded = foldable.every((id) => state.nodes[id].collapsed);
+  return foldable.reduce((s, id) => setCollapsed(s, id, !allFolded), state);
+}
+
 /**
  * The same tree with every branch unfolded. Not an edit: used to draw or
  * export the whole tree without touching what is saved.

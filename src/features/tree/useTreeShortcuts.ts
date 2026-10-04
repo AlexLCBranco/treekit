@@ -47,7 +47,7 @@ function onCanvas(target: EventTarget | null): boolean {
  *   N                          open its notes
  *   F                          fork its branch into a new tree
  *   X                          cut it (non-destructive), or un-cut it
- *   Space                      collapse or expand its branch
+ *   Space                      collapse or expand its branch (a group: all)
  *   1-8, 0                     set a palette colour; 0 clears it
  *   Delete, Backspace          delete it and its branch
  *   Shift+Delete/Backspace     delete only it; its children move up
@@ -134,7 +134,10 @@ export function useTreeShortcuts() {
       } else if (key === " ") {
         // Also stops the page scrolling.
         event.preventDefault();
-        store.toggleCollapsed(selectedId);
+        // A marquee group folds together: all of it, or unfolds if all is.
+        const group = selectionOf(store);
+        if (group.length > 1) store.toggleCollapsedNodes(group);
+        else store.toggleCollapsed(selectedId);
       } else if (key === "delete" || key === "backspace") {
         event.preventDefault();
         // A marquee group deletes together (whole branches, one undo step).

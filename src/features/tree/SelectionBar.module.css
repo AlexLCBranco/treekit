@@ -1,0 +1,96 @@
+/* Sits in the bottom dock, above the cursor tools (see TreeCanvas). */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.count {
+  padding: 0 var(--space-2);
+  color: var(--text-primary);
+}
+
+.divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border-subtle);
+}
+
+.button,
+.iconButton,
+.colorTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: var(--space-6);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.button,
+.colorTrigger {
+  padding: 0 var(--space-2);
+}
+
+.iconButton {
+  width: var(--space-6);
+}
+
+.button:hover,
+.iconButton:hover:not(:disabled),
+.colorTrigger:hover,
+.colorTrigger[data-state="open"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.button[aria-pressed="true"] {
+  background: var(--surface-active);
+  color: var(--text-primary);
+}
+
+.iconButton[data-danger]:hover {
+  color: var(--palette-red);
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.swatch {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+.swatch[data-none] {
+  border: 1px solid var(--border-strong);
+}
+
+/* Several colours picked: a split dot, so "mixed" reads at a glance. */
+.swatch[data-mixed] {
+  background: conic-gradient(
+    var(--palette-red) 0 25%,
+    var(--palette-orange) 0 50%,
+    var(--palette-green) 0 75%,
+    var(--palette-blue) 0
+  );
+}

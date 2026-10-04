@@ -182,8 +182,10 @@
   transform: scale(1);
 }
 
+/* In a marquee group the selection bar has the actions, so the picked
+   nodes don't each show a toolbar too (hovering one still does). */
 .node:hover .toolbar,
-.node[data-selected] .toolbar {
+.node[data-selected]:not([data-grouped]) .toolbar {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);

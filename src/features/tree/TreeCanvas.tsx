@@ -18,6 +18,7 @@ import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
 import { FRAME_MARGIN, FRAME_MARGINS, FRAME_PAN_MS, LAYOUT_TWEEN_MS, TREE_LAYOUT } from "./layoutConfig";
 import { NodeContextMenu } from "./NodeContextMenu";
+import { SelectionBar } from "./SelectionBar";
 import styles from "./TreeCanvas.module.css";
 import { TreeEdgeView, type TreeFlowEdge } from "./TreeEdgeView";
 import { TreeNodeView, type TreeFlowNode } from "./TreeNodeView";
@@ -309,7 +310,10 @@ function TreeCanvasInner() {
           </div>
         </div>
         {/* Outside the scrolling page, so they stay put on the screen. */}
-        <ToolPicker />
+        <div className={styles.dock}>
+          <SelectionBar />
+          <ToolPicker />
+        </div>
         <ZoomControls />
         {tool === "laser" && <LaserTrail />}
       </div>

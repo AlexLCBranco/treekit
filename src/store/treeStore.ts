@@ -101,6 +101,9 @@ interface TreeStore {
   deleteBranches: (nodeIds: readonly NodeId[]) => void;
   /** Colours several nodes as one undo step; `null` clears. */
   setNodesColor: (nodeIds: readonly NodeId[], color: PaletteColor | null) => void;
+  /** Folds several branches as one undo step, or unfolds them if all
+      already are folded. Group members folded away drop out of the group. */
+  toggleCollapsedNodes: (nodeIds: readonly NodeId[]) => void;
   /** Sets the status of several nodes as one undo step; `null` clears. */
   setNodesStatus: (nodeIds: readonly NodeId[], status: NodeStatus | null) => void;
   /** Cuts these nodes, or un-cuts them if all already are (X). */
@@ -438,6 +441,16 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
     set((s) => {
       const next = tree.setNodesColor(s.tree, nodeIds, color);
       return next === s.tree ? s : commit(s, next);
+    }),
+
+  toggleCollapsedNodes: (nodeIds) =>
+    set((s) => {
+      const next = tree.toggleCollapsedNodes(s.tree, nodeIds);
+      if (next === s.tree) return s;
+      const selectedId = keepIfPresent(next, s.selectedId);
+      const visible = s.selectedIds.filter((id) => tree.visibleAncestor(next, id) === id);
+      const selectedIds = selectedId && !visible.includes(selectedId) ? [...visible, selectedId] : visible;
+      return { ...commit(s, next), selectedId, selectedIds, editingId: null, editingEdgeId: null };
     }),
 
   setNodesStatus: (nodeIds, status) => set((s) => commitVisible(s, tree.setNodesStatus(s.tree, nodeIds, status))),

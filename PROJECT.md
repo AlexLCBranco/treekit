@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-02, v0.0.31_
+_Last updated: 2026-10-03, v0.0.32_
 
 ## What it is
 
@@ -36,9 +36,16 @@ with Vitest tests.
   (drag leaves a fading red trail). Keys V, K; the tool is not remembered
   across visits
 - Select tool: dragging empty page draws a marquee that picks every node
-  it touches. With several picked, 1–8 / 0 colour
-  them all and Delete removes their branches, each as one undo step; other
-  shortcuts (arrows, Tab, rename) work on the last one picked
+  it touches. With two or more picked, a selection bar appears above the
+  cursor tools: how many are picked, a colour dropdown (shows the shared
+  colour, or a mixed dot), Keep / Maybe / Cut toggles (pressed when all
+  have it; pressing again clears it), collapse / expand all their
+  branches, delete all their branches, and clear the selection. Each is
+  one undo step. The keys do the same (1–8 / 0, X, Space, Delete), and
+  the right-click menu on a picked node acts on the whole group too
+  (including "Collapse branches" and "Delete N branches"). The picked
+  nodes hide their own hover toolbars while grouped. Other shortcuts
+  (arrows, Tab, rename) work on the last one picked
 - Align panel in the header (Excalidraw-style icons): put the whole tree against the page: left / centre / right and top / middle / bottom; remembered across visits. Aligned to the top, the tree sits just under the header (a small gap); the other edges keep a wider gap for the zoom pill and cursor tools
 - Several trees on one board: double-click empty canvas to start another
   tree (open for naming). Trees always sit side by side (in a row top-down,

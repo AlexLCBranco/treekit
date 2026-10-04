@@ -1,5 +1,6 @@
-import { ChevronsDownUp, ChevronsUpDown, GitFork, NotebookPen } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, GitFork, NotebookPen, Trash2 } from "lucide-react";
 import { useRef, useState, type MouseEvent, type ReactElement } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import {
   ContextMenu,
@@ -88,6 +89,7 @@ export function NodeContextMenu({ children }: { readonly children: ReactElement 
         {targetId && <CollapseItem nodeId={targetId} />}
         {targetId && <StatusItems nodeId={targetId} />}
         {targetId && <ColorItems nodeId={targetId} />}
+        <DeleteGroupItem />
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -122,19 +124,34 @@ function ForkItem({ nodeId, runAfterClose }: ItemProps) {
   );
 }
 
-/** "Collapse/Expand branch", with a separator under it. Absent for a leaf,
-    which has nothing to fold. */
+/** "Collapse/Expand branch", with a separator under it. Absent when there
+    is nothing to fold. With a marquee group, folds all of it (or unfolds
+    it if all of it already is), like Space. */
 function CollapseItem({ nodeId }: { readonly nodeId: NodeId }) {
-  const hasChildren = useTreeStore((s) => (s.tree.childEdges[nodeId]?.length ?? 0) > 0);
-  const collapsed = useTreeStore((s) => s.tree.nodes[nodeId]?.collapsed ?? false);
+  const { foldable, folded, many } = useTreeStore(
+    useShallow((s) => {
+      const group = selectionOf(s);
+      const ids = group.length > 1 && group.includes(nodeId) ? group : [nodeId];
+      const withChildren = ids.filter((id) => (s.tree.childEdges[id]?.length ?? 0) > 0);
+      return {
+        foldable: withChildren.length,
+        folded: withChildren.length > 0 && withChildren.every((id) => s.tree.nodes[id].collapsed),
+        many: ids.length > 1,
+      };
+    }),
+  );
   const toggleCollapsed = useTreeStore((s) => s.toggleCollapsed);
-  if (!hasChildren) return null;
+  const toggleCollapsedNodes = useTreeStore((s) => s.toggleCollapsedNodes);
+  if (foldable === 0) return null;
+  const noun = many ? "branches" : "branch";
 
   return (
     <>
-      <ContextMenuItem onSelect={() => toggleCollapsed(nodeId)}>
-        {collapsed ? <ChevronsUpDown aria-hidden /> : <ChevronsDownUp aria-hidden />}
-        {collapsed ? "Expand branch" : "Collapse branch"}
+      <ContextMenuItem
+        onSelect={() => (many ? toggleCollapsedNodes(selectionOf(useTreeStore.getState())) : toggleCollapsed(nodeId))}
+      >
+        {folded ? <ChevronsUpDown aria-hidden /> : <ChevronsDownUp aria-hidden />}
+        {folded ? `Expand ${noun}` : `Collapse ${noun}`}
         <ContextMenuShortcut>Space</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuSeparator />
@@ -206,6 +223,26 @@ function ColorItems({ nodeId }: { readonly nodeId: NodeId }) {
           </ContextMenuRadioItem>
         ))}
       </ContextMenuRadioGroup>
+    </>
+  );
+}
+
+/** "Delete N branches", at the bottom, only for a marquee group: one node
+    is deleted from its hover toolbar or with Del, but a group has no
+    toolbar of its own on the node. */
+function DeleteGroupItem() {
+  const count = useTreeStore((s) => selectionOf(s).length);
+  const deleteBranches = useTreeStore((s) => s.deleteBranches);
+  if (count < 2) return null;
+
+  return (
+    <>
+      <ContextMenuSeparator />
+      <ContextMenuItem variant="destructive" onSelect={() => deleteBranches(selectionOf(useTreeStore.getState()))}>
+        <Trash2 aria-hidden />
+        Delete {count} branches
+        <ContextMenuShortcut>Del</ContextMenuShortcut>
+      </ContextMenuItem>
     </>
   );
 }

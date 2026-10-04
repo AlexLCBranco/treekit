@@ -40,6 +40,14 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
   // Hidden cut children don't count: there is nothing to fold if all are.
   const childCount = useTreeStore((s) => visibleChildren(s.tree, nodeId).length);
   const isCut = useTreeStore((s) => cutIdsOf(s.tree).has(nodeId));
+  // Part of a marquee group (see `selectionOf`): its toolbar stays hidden.
+  const inGroup = useTreeStore(
+    (s) =>
+      s.selectedIds.length > 1 &&
+      s.selectedId !== null &&
+      s.selectedIds.includes(s.selectedId) &&
+      s.selectedIds.includes(nodeId),
+  );
   const hidden = useTreeStore((s) =>
     s.tree.nodes[nodeId]?.collapsed ? hiddenCount(s.tree, nodeId) : 0,
   );
@@ -67,6 +75,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
     <div
       className={styles.node}
       data-selected={selected || undefined}
+      data-grouped={inGroup || undefined}
       data-root={isRoot || undefined}
       data-colored={node.color ? true : undefined}
       data-collapsed={node.collapsed || undefined}
