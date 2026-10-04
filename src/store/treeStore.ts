@@ -176,6 +176,23 @@ export function cutIdsOf(state: TreeState): ReadonlySet<NodeId> {
   return ids;
 }
 
+/** The nodes on the path from the root to the selected node, that node
+    included (see `tree.pathToNode`). Empty with no selection or with a
+    marquee group, where several trails at once would just be noise. Worked
+    out once per tree and selection (a one-entry cache: every node and line
+    asks about the same pair) and shared by all of them. */
+let pathCache: { tree: TreeState; selectedId: NodeId; ids: ReadonlySet<NodeId> } | null = null;
+const NO_PATH: ReadonlySet<NodeId> = new Set();
+export function pathIdsOf(s: Pick<TreeStore, "tree" | "selectedId" | "selectedIds">): ReadonlySet<NodeId> {
+  const selection = selectionOf(s);
+  if (selection.length !== 1) return NO_PATH;
+  const [selectedId] = selection;
+  if (pathCache?.tree !== s.tree || pathCache.selectedId !== selectedId) {
+    pathCache = { tree: s.tree, selectedId, ids: new Set(tree.pathToNode(s.tree, selectedId)) };
+  }
+  return pathCache.ids;
+}
+
 /** After undo/redo, drop a selection that points at a node that is gone,
     and move one that is now folded away to the node hiding it. */
 function keepIfPresent(state: TreeState, id: NodeId | null): NodeId | null {

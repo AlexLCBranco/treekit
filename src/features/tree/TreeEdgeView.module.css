@@ -25,6 +25,11 @@
   color: var(--text-primary);
 }
 
+/* On the trail from the root to the selected node, like the line. */
+.label[data-on-path]:not([data-selected]) {
+  border-color: var(--trail-stroke);
+}
+
 /* While typing, a minimum width so an empty field is still a target. */
 .label[data-editing] {
   min-width: var(--edge-label-min-width);
@@ -37,6 +42,15 @@
 .cutPath:global(.react-flow__edge-path) {
   stroke-dasharray: var(--cut-dash);
   opacity: calc(1 - var(--cut-veil));
+}
+
+/* A line on the trail from the root to the selected node: a paler accent
+   than the selection, a little thicker than the other lines. Set through
+   the variables the canvas's `.react-flow__edge-path` rule reads, which
+   would otherwise win (it comes later in the page's CSS). */
+.trailPath {
+  --edge-stroke: var(--trail-stroke);
+  --edge-width: var(--trail-width);
 }
 
 .label[data-cut] {

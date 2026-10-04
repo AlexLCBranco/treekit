@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-04, v0.0.35_
+_Last updated: 2026-10-04, v0.0.36_
 
 ## What it is
 
@@ -66,6 +66,9 @@ with Vitest tests.
   Only "+" stays on the node's edge, so nothing crowds the node
 - A root node on a dot-grid page
 - Nodes lift slightly and show an accent ring on hover, like Boardkit cards
+- The trail to the selected node: the lines and nodes from the root down to
+  it are drawn in a paler accent than the selection, so you can see the
+  path that led there (not shown while several nodes are marquee-picked)
 - Notes: every node can hold free multi-line text behind its title. Open
   them with N, the notes button in the hover toolbar, or the right-click
   menu: a side panel (below the header) shows the node's title and a text

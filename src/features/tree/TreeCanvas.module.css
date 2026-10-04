@@ -58,7 +58,7 @@
 
 .canvas :global(.react-flow__edge-path) {
   stroke: var(--edge-stroke);
-  stroke-width: 1.5;
+  stroke-width: var(--edge-width);
 }
 
 .canvas :global(.react-flow__attribution) {

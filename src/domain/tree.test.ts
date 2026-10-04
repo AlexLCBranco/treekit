@@ -7,6 +7,7 @@ import {
   createTree,
   hiddenCount,
   parentEdgeOf,
+  pathToNode,
   renameNode,
   setCollapsed,
   setEdgeLabel,
@@ -35,6 +36,18 @@ describe("tree operations", () => {
     const second = add(first.state, tree.roots[0], "B");
     tree = second.state;
     expect(childrenOf(tree, tree.roots[0])).toEqual([first.id, second.id]);
+  });
+
+  it("finds the path from the root down to a node", () => {
+    const start = createTree();
+    const root = start.roots[0];
+    const a = add(start, root, "A");
+    const b = add(a.state, a.id, "B");
+    const c = add(b.state, root, "C");
+    expect(pathToNode(c.state, b.id)).toEqual([root, a.id, b.id]);
+    expect(pathToNode(c.state, c.id)).toEqual([root, c.id]);
+    expect(pathToNode(c.state, root)).toEqual([root]);
+    expect(pathToNode(c.state, "nope" as NodeId)).toEqual([]);
   });
 
   it("ignores a missing parent", () => {

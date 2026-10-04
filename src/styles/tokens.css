@@ -60,6 +60,9 @@
   /* Edge labels wrap past the max; the min keeps an empty field clickable. */
   --edge-label-min-width: 56px;
   --edge-label-max-width: 160px;
+  /* Lines between nodes; the trail to the selected node is a bit thicker. */
+  --edge-width: 1.5px;
+  --trail-width: 2px;
 
   /* ---- Stacking order ---- */
   --z-canvas: 1;
@@ -113,6 +116,9 @@
   --accent: #748ffc;
   --accent-hover: #91a7ff;
   --focus-ring: rgba(116, 143, 252, 0.5);
+  /* The trail from the root to the selected node: a paler accent. */
+  --trail-ring: rgba(116, 143, 252, 0.28);
+  --trail-stroke: rgba(116, 143, 252, 0.6);
 
   /* Canvas: edges and the dot grid. */
   --edge-stroke: rgba(255, 255, 255, 0.28);
@@ -144,6 +150,8 @@
   --accent: #3b5bdb;
   --accent-hover: #364fc7;
   --focus-ring: rgba(59, 91, 219, 0.4);
+  --trail-ring: rgba(59, 91, 219, 0.2);
+  --trail-stroke: rgba(59, 91, 219, 0.45);
 
   --edge-stroke: rgba(0, 0, 0, 0.3);
   --canvas-dots: rgba(0, 0, 0, 0.09);

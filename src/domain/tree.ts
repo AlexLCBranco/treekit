@@ -210,6 +210,17 @@ export function parentEdgeOf(state: TreeState, nodeId: NodeId): TreeEdge | null 
   return null;
 }
 
+/** The nodes from the root down to `nodeId`, both included: the trail that
+    led to it. Empty if `nodeId` does not exist. */
+export function pathToNode(state: TreeState, nodeId: NodeId): NodeId[] {
+  if (!state.nodes[nodeId]) return [];
+  const path = [nodeId];
+  for (let edge = parentEdgeOf(state, nodeId); edge; edge = parentEdgeOf(state, edge.source)) {
+    path.unshift(edge.source);
+  }
+  return path;
+}
+
 /** `nodeId` and everything below it, collapsed or not. */
 export function subtreeIds(state: TreeState, nodeId: NodeId): NodeId[] {
   const ids: NodeId[] = [];

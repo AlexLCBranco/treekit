@@ -5,7 +5,7 @@ import { memo, useEffect, type CSSProperties } from "react";
 import { InlineEditable } from "../../components/InlineEditable";
 import { hiddenCount, isRoot as isRootOf, visibleChildren } from "../../domain/tree";
 import type { NodeId } from "../../domain/types";
-import { cutIdsOf, useTreeStore } from "../../store/treeStore";
+import { cutIdsOf, pathIdsOf, useTreeStore } from "../../store/treeStore";
 import { STATUS_META } from "./statusMeta";
 import styles from "./TreeNodeView.module.css";
 
@@ -25,8 +25,12 @@ export type TreeFlowNode = Node<{ readonly lifted?: boolean; readonly dropTarget
  * shows as a badge on the other corner; a cut node, and everything under
  * it, is greyed out.
  *
+ * The nodes on the way from the root to the selected one get a lighter
+ * ring, so the trail that led there stands out.
+ *
  * Subscribes narrowly: only to its own node record, its child count,
- * whether it is being edited or looks cut, and the tree's direction. Renaming one node
+ * whether it is being edited, looks cut or is on the selected node's
+ * trail, and the tree's direction. Renaming one node
  * re-renders that node alone. (The hidden count is a number, so the
  * selector's result only "changes" when the count does.)
  */
@@ -42,6 +46,9 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected, dragging,
   // Hidden cut children don't count: there is nothing to fold if all are.
   const childCount = useTreeStore((s) => visibleChildren(s.tree, nodeId).length);
   const isCut = useTreeStore((s) => cutIdsOf(s.tree).has(nodeId));
+  // On the trail from the root to the selected node (the selected node
+  // itself shows the full selection ring instead).
+  const onPath = useTreeStore((s) => s.selectedId !== nodeId && pathIdsOf(s).has(nodeId));
   // Part of a marquee group (see `selectionOf`): its toolbar stays hidden.
   const inGroup = useTreeStore(
     (s) =>
@@ -78,6 +85,7 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected, dragging,
       className={styles.node}
       data-selected={selected || undefined}
       data-grouped={inGroup || undefined}
+      data-on-path={onPath || undefined}
       data-root={isRoot || undefined}
       data-colored={node.color ? true : undefined}
       data-collapsed={node.collapsed || undefined}

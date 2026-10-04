@@ -51,6 +51,21 @@
   background: color-mix(in srgb, var(--node-accent) 22%, var(--surface-raised));
 }
 
+/* On the trail from the root to the selected node: a paler ring than the
+   selection's, so the path stands out without competing with it. */
+.node[data-on-path] {
+  box-shadow:
+    0 0 0 2px var(--trail-ring),
+    var(--shadow-sm);
+}
+
+.node[data-on-path]:hover {
+  box-shadow:
+    0 0 0 2px var(--trail-ring),
+    var(--shadow-md),
+    inset 0 0 0 1px var(--node-accent);
+}
+
 .node[data-selected] {
   border-color: var(--node-accent);
   box-shadow:

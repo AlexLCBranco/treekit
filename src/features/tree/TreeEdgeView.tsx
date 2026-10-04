@@ -11,7 +11,7 @@ import { memo, useCallback } from "react";
 import { InlineEditable } from "../../components/InlineEditable";
 import type { EdgeRoute, Size } from "../../domain/layout";
 import type { EdgeId } from "../../domain/types";
-import { cutIdsOf, selectionOf, useTreeStore } from "../../store/treeStore";
+import { cutIdsOf, pathIdsOf, selectionOf, useTreeStore } from "../../store/treeStore";
 import styles from "./TreeEdgeView.module.css";
 
 export interface TreeEdgeData extends Record<string, unknown> {
@@ -38,8 +38,12 @@ export type TreeFlowEdge = Edge<TreeEdgeData, "tree">;
  * A line into a cut node (or anywhere under one) is dashed and faded, like
  * the node.
  *
+ * A line on the trail from the root to the selected node is drawn in a
+ * lighter accent, like the nodes on it.
+ *
  * Subscribes narrowly, like a node: only to its own label, whether it is
- * being edited, and whether the node it leads to is selected or cut.
+ * being edited, and whether the node it leads to is selected, on the
+ * selected node's trail, or cut.
  */
 export const TreeEdgeView = memo(function TreeEdgeView({
   id,
@@ -58,6 +62,11 @@ export const TreeEdgeView = memo(function TreeEdgeView({
   const isTargetSelected = useTreeStore((s) => {
     const target = s.tree.edges[edgeId]?.target;
     return target !== undefined && selectionOf(s).includes(target);
+  });
+  // On the trail from the root to the selected node (its own line included).
+  const onPath = useTreeStore((s) => {
+    const target = s.tree.edges[edgeId]?.target;
+    return target !== undefined && pathIdsOf(s).has(target);
   });
   const isCut = useTreeStore((s) => {
     const target = s.tree.edges[edgeId]?.target;
@@ -107,13 +116,18 @@ export const TreeEdgeView = memo(function TreeEdgeView({
 
   return (
     <>
-      <BaseEdge id={id} path={path} className={isCut ? styles.cutPath : undefined} />
+      <BaseEdge
+        id={id}
+        path={path}
+        className={[isCut && styles.cutPath, onPath && styles.trailPath].filter(Boolean).join(" ") || undefined}
+      />
       {(label || isEditing) && (
         <EdgeLabelRenderer>
           <div
             ref={measure}
             className={`${styles.label} nodrag nopan`}
             data-selected={isTargetSelected || undefined}
+            data-on-path={onPath || undefined}
             data-editing={isEditing || undefined}
             data-cut={isCut || undefined}
             style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
