@@ -3,7 +3,9 @@ import {
   EdgeLabelRenderer,
   getSmoothStepPath,
   Position,
+  useInternalNode,
   type Edge,
+  type InternalNode,
   type EdgeProps,
 } from "@xyflow/react";
 import { memo, useCallback } from "react";
@@ -41,16 +43,24 @@ export type TreeFlowEdge = Edge<TreeEdgeData, "tree">;
  * A line on the trail from the root to the selected node is drawn in a
  * lighter accent, like the nodes on it.
  *
- * Subscribes narrowly, like a node: only to its own label, whether it is
- * being edited, and whether the node it leads to is selected, on the
- * selected node's trail, or cut.
+ * The ends sit at the middle of each node's side, worked out from the
+ * node's position and measured size rather than from React Flow's handles.
+ * Handles are read from the DOM, so a node measured while lifted by hover
+ * (or mid-transition) would keep its handle a pixel off, and a straight
+ * line would get a small jog in the middle.
+ *
+ * Subscribes narrowly, like a node: only to its own two nodes, its own
+ * label, whether it is being edited, and whether the node it leads to is
+ * selected, on the selected node's trail, or cut.
  */
 export const TreeEdgeView = memo(function TreeEdgeView({
   id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
+  source,
+  target,
+  sourceX: handleSourceX,
+  sourceY: handleSourceY,
+  targetX: handleTargetX,
+  targetY: handleTargetY,
   sourcePosition,
   targetPosition,
   data,
@@ -77,6 +87,12 @@ export const TreeEdgeView = memo(function TreeEdgeView({
   const stopEditing = useTreeStore((s) => s.stopEditing);
 
   const vertical = sourcePosition === Position.Bottom;
+  const sourceEnd = sideMiddle(useInternalNode(source), vertical, "far");
+  const targetEnd = sideMiddle(useInternalNode(target), vertical, "near");
+  const sourceX = sourceEnd?.x ?? handleSourceX;
+  const sourceY = sourceEnd?.y ?? handleSourceY;
+  const targetX = targetEnd?.x ?? handleTargetX;
+  const targetY = targetEnd?.y ?? handleTargetY;
   const bend = data?.route.bendAfterSource;
   const labelOffset = data?.route.labelBeforeTarget ?? 0;
   const [path] = getSmoothStepPath({
@@ -147,3 +163,19 @@ export const TreeEdgeView = memo(function TreeEdgeView({
     </>
   );
 });
+
+/** The middle of a node's near side (where its line comes in: top, or
+    left) or far side (where lines leave: bottom, or right); `undefined`
+    until the node is measured. */
+function sideMiddle(
+  node: InternalNode | undefined,
+  vertical: boolean,
+  side: "near" | "far",
+): { x: number; y: number } | undefined {
+  const width = node?.measured.width;
+  const height = node?.measured.height;
+  if (!node || width === undefined || height === undefined) return undefined;
+  const { x, y } = node.internals.positionAbsolute;
+  const far = side === "far";
+  return vertical ? { x: x + width / 2, y: far ? y + height : y } : { x: far ? x + width : x, y: y + height / 2 };
+}

@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-04, v0.0.36_
+_Last updated: 2026-10-04, v0.0.37_
 
 ## What it is
 
@@ -117,7 +117,9 @@ with Vitest tests.
   double-click a line or its label, to label the line leading into it;
   clearing the text removes the label. Labels sit just before the child
   they describe (or in the middle of the line for an only child), the
-  layout makes room for them, and they light up with the selected node
+  layout makes room for them, and they light up with the selected node.
+  Lines attach to the middle of each node's side, so a line between
+  nodes in a row is perfectly straight (no small jog in the middle)
 - Colours: right-click a node for a menu of 8 fixed colours (or none), or
   select it and press 1–8 (0 clears). The node gets a tint and border in
   that colour; lines stay neutral, and new children start uncoloured
