@@ -144,7 +144,7 @@ function TreeCanvasInner() {
     const pointer = "touches" in event ? event.touches[0] : event;
     if (!pointer) return;
     const at = screenToFlowPosition({ x: pointer.clientX, y: pointer.clientY });
-    const spot = dropSpotAt(tree, drag.id, at, rects, TREE_LAYOUT.nodeGap);
+    const spot = dropSpotAt(tree, drag.id, at, rects, DROP_REACH);
     const target = spot && dropPlacement(tree, drag.id, spot) ? spot : null;
     setDrag((d) => d && { ...d, offset: { x: node.position.x - d.start.x, y: node.position.y - d.start.y }, spot: target });
   };
@@ -434,6 +434,12 @@ function TreeCanvasInner() {
     it would drop into (as a child) is the drop target. Shared objects, so a
     node's data only changes identity when its role does. */
 const LIFTED = { lifted: true };
+/** A pointer in the gap beside a node aims at it as a sibling; in the
+    space where its children go (a rank gap plus a node), as their parent. */
+const DROP_REACH = {
+  sibling: TREE_LAYOUT.nodeGap,
+  child: TREE_LAYOUT.rankGap + TREE_LAYOUT.fallbackSize.width,
+};
 const DROP_TARGET = { dropTarget: true };
 const NO_DATA = {};
 

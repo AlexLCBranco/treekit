@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-04, v0.0.34_
+_Last updated: 2026-10-04, v0.0.35_
 
 ## What it is
 
@@ -98,8 +98,9 @@ with Vitest tests.
   undo step. Delete still deletes
 - Drag and drop, like a Boardkit card: pick up any node (not a root) and
   it follows the pointer with its whole branch (lifted, a little
-  see-through). Drop it on a node to make it that node's last child (the
-  node lights up), or on the edge of a node or in the gap beside it to
+  see-through). Drop it on a node, or in the empty space where that
+  node's children go (right of it left-right, below it top-down), to make
+  it that node's last child (the node lights up), or on the edge of a node or in the gap beside it to
   slot it in as a sibling there (an accent line shows where). It works
   across trees on the board too. The edge label goes with it, a folded
   node it lands in unfolds, and the branch glides from where you let go

@@ -71,6 +71,8 @@ describe("moveBranch", () => {
   });
 });
 
+const reach = (sibling: number) => ({ sibling, child: 0 });
+
 describe("dropSpotAt", () => {
   // Top-down: the root above, A, B, C in a row 100 wide with 20 between, A1 under A.
   const layout = (t: ReturnType<typeof sample>) =>
@@ -85,36 +87,54 @@ describe("dropSpotAt", () => {
   it("the middle of a node means child, its ends mean sibling", () => {
     const t = sample();
     const rects = layout(t);
-    expect(dropSpotAt(t.state, t.c, { x: 170, y: 120 }, rects, 20)).toEqual({ kind: "child", nodeId: t.b });
-    expect(dropSpotAt(t.state, t.c, { x: 125, y: 120 }, rects, 20)).toEqual({ kind: "before", nodeId: t.b });
-    expect(dropSpotAt(t.state, t.c, { x: 215, y: 120 }, rects, 20)).toEqual({ kind: "after", nodeId: t.b });
+    expect(dropSpotAt(t.state, t.c, { x: 170, y: 120 }, rects, reach(20))).toEqual({ kind: "child", nodeId: t.b });
+    expect(dropSpotAt(t.state, t.c, { x: 125, y: 120 }, rects, reach(20))).toEqual({ kind: "before", nodeId: t.b });
+    expect(dropSpotAt(t.state, t.c, { x: 215, y: 120 }, rects, reach(20))).toEqual({ kind: "after", nodeId: t.b });
   });
 
   it("the gap beside a node means sibling, within reach", () => {
     const t = sample();
     const rects = layout(t);
-    expect(dropSpotAt(t.state, t.a1, { x: 105, y: 120 }, rects, 20)).toEqual({ kind: "after", nodeId: t.a });
-    expect(dropSpotAt(t.state, t.a1, { x: 360, y: 120 }, rects, 30)).toEqual({ kind: "after", nodeId: t.c });
-    expect(dropSpotAt(t.state, t.a1, { x: 400, y: 120 }, rects, 30)).toBeNull();
-    expect(dropSpotAt(t.state, t.a1, { x: 170, y: 70 }, rects, 30)).toBeNull();
+    expect(dropSpotAt(t.state, t.a1, { x: 105, y: 120 }, rects, reach(20))).toEqual({ kind: "after", nodeId: t.a });
+    expect(dropSpotAt(t.state, t.a1, { x: 360, y: 120 }, rects, reach(30))).toEqual({ kind: "after", nodeId: t.c });
+    expect(dropSpotAt(t.state, t.a1, { x: 400, y: 120 }, rects, reach(30))).toBeNull();
+    expect(dropSpotAt(t.state, t.a1, { x: 170, y: 70 }, rects, reach(30))).toBeNull();
+  });
+
+  it("the space where a node's children go means child", () => {
+    const t = sample();
+    const rects = layout(t);
+    // Below B (top-down), a little past its bottom.
+    expect(dropSpotAt(t.state, t.a1, { x: 170, y: 170 }, rects, { sibling: 20, child: 80 })).toEqual({
+      kind: "child",
+      nodeId: t.b,
+    });
+    expect(dropSpotAt(t.state, t.a1, { x: 170, y: 170 }, rects, { sibling: 20, child: 20 })).toBeNull();
+    // Left-right: to the right of the node.
+    const lr = { ...t.state, direction: "LR" as const };
+    const side = new Map<NodeId, Rect>([[t.b, { x: 100, y: 0, width: 100, height: 40 }]]);
+    expect(dropSpotAt(lr, t.c, { x: 260, y: 20 }, side, { sibling: 20, child: 80 })).toEqual({
+      kind: "child",
+      nodeId: t.b,
+    });
   });
 
   it("anywhere on a root means child", () => {
     const t = sample();
-    expect(dropSpotAt(t.state, t.c, { x: 122, y: 20 }, layout(t), 20)).toEqual({ kind: "child", nodeId: t.root });
+    expect(dropSpotAt(t.state, t.c, { x: 122, y: 20 }, layout(t), reach(20))).toEqual({ kind: "child", nodeId: t.root });
   });
 
   it("never targets the dragged branch", () => {
     const t = sample();
-    expect(dropSpotAt(t.state, t.a, { x: 50, y: 220 }, layout(t), 20)).toBeNull();
+    expect(dropSpotAt(t.state, t.a, { x: 50, y: 220 }, layout(t), reach(20))).toBeNull();
   });
 
   it("left-right trees spread siblings down the page", () => {
     const t = sample();
     const state = { ...t.state, direction: "LR" as const };
     const rects = new Map<NodeId, Rect>([[t.b, { x: 100, y: 0, width: 100, height: 40 }]]);
-    expect(dropSpotAt(state, t.c, { x: 150, y: 2 }, rects, 20)).toEqual({ kind: "before", nodeId: t.b });
-    expect(dropSpotAt(state, t.c, { x: 150, y: 50 }, rects, 20)).toEqual({ kind: "after", nodeId: t.b });
+    expect(dropSpotAt(state, t.c, { x: 150, y: 2 }, rects, reach(20))).toEqual({ kind: "before", nodeId: t.b });
+    expect(dropSpotAt(state, t.c, { x: 150, y: 50 }, rects, reach(20))).toEqual({ kind: "after", nodeId: t.b });
   });
 });
 
