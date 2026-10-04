@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-03, v0.0.33_
+_Last updated: 2026-10-04, v0.0.34_
 
 ## What it is
 
@@ -21,7 +21,8 @@ canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
 TypeScript (tree model and operations, layout, keyboard navigation, page and zoom, undo history,
-save format, Mermaid import/export, what the marquee picks)
+save format, Mermaid import/export, what the marquee picks, where a
+dragged branch drops)
 with Vitest tests.
 
 ## What works now
@@ -95,6 +96,16 @@ with Vitest tests.
   "Hide cut" in the header (with a count of cut branches) hides them the
   way folding does, closing the gap; it is saved with the board and is an
   undo step. Delete still deletes
+- Drag and drop, like a Boardkit card: pick up any node (not a root) and
+  it follows the pointer with its whole branch (lifted, a little
+  see-through). Drop it on a node to make it that node's last child (the
+  node lights up), or on the edge of a node or in the gap beside it to
+  slot it in as a sibling there (an accent line shows where). It works
+  across trees on the board too. The edge label goes with it, a folded
+  node it lands in unfolds, and the branch glides from where you let go
+  into place; it ends up selected. Dropping anywhere else, or back where it
+  was, glides it home with no change. One undo step. Roots don't drag (a
+  tree can't become a branch)
 - Add a child: the "+" on a node, or select it and press Tab
 - Rename inline: double-click, or Enter/F2 on the selected node; a new
   child opens for naming straight away
@@ -153,7 +164,9 @@ ordered:
 - Mermaid subgraphs, and nodes with two parents (needs a graph layout)
 - Import Mermaid with several starting points as several trees on one board
   (export already writes every tree; import still refuses more than one)
-- Drag trees to reorder them in the row
+- Drag trees (roots) to reorder them in the row
+- Drag several marquee-picked nodes at once
+- While dragging, scroll the page when the pointer nears its edge
 - A visible notice for repaired saves (see open problems)
 
 ## Open problems

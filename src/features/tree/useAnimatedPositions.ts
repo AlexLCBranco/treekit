@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Point } from "../../domain/layout";
 import type { NodeId } from "../../domain/types";
@@ -17,6 +17,10 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3;
  * A node with no previous position starts from its nearest ancestor that
  * has one (`parentOf`), so a new child grows out of its parent, and a whole
  * re-expanded branch grows out of the node that was expanded.
+ *
+ * `glideFrom` puts some nodes somewhere else first (where a dragged branch
+ * was dropped) and glides everything to the layout from there, whether or
+ * not the layout changed.
  */
 export function useAnimatedPositions(
   targets: ReadonlyMap<NodeId, Point>,
@@ -24,11 +28,21 @@ export function useAnimatedPositions(
   durationMs: number,
   /** False snaps straight to the targets (e.g. the very first layout). */
   enabled: boolean,
-): ReadonlyMap<NodeId, Point> {
+): { positions: ReadonlyMap<NodeId, Point>; glideFrom: (from: ReadonlyMap<NodeId, Point>) => void } {
   const [current, setCurrent] = useState<ReadonlyMap<NodeId, Point>>(targets);
   // Mirrors `current` for the effect below, which must start each glide
   // from wherever nodes are right now without re-running on every frame.
   const currentRef = useRef(current);
+  // Bumped by `glideFrom` to start a glide when the targets stay the same.
+  const [kick, setKick] = useState(0);
+
+  const glideFrom = useCallback((from: ReadonlyMap<NodeId, Point>) => {
+    const next = new Map(currentRef.current);
+    for (const [id, p] of from) next.set(id, p);
+    currentRef.current = next;
+    setCurrent(next);
+    setKick((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     const show = (next: ReadonlyMap<NodeId, Point>) => {
@@ -72,7 +86,7 @@ export function useAnimatedPositions(
     return () => cancelAnimationFrame(frame);
     // `parentOf` is only consulted when `targets` changes, which is always
     // the same render in which it changes.
-  }, [targets, durationMs, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targets, durationMs, enabled, kick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return current;
+  return { positions: current, glideFrom };
 }

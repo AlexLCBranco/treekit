@@ -65,6 +65,7 @@ const GROUPS: readonly Group[] = [
       { description: "Collapse or expand a branch", combos: [["Click −"], ["Click the count"]] },
       { description: "Notes, fork, status (keep, maybe, cut), colour or collapse", combos: [["Right-click"]] },
       { description: "Preview a node's notes", combos: [["Hover"]] },
+      { description: "Move a node and its branch: drop it on a node to make it a child, or beside one to slot it in as a sibling", combos: [["Drag a node"]] },
       { description: "Select several nodes (select cursor); a bar above the cursor tools (and keys 1–8, 0, X, Space, Del) then act on all", combos: [["Drag"]] },
       { description: "Leave a fading red trail (laser cursor)", combos: [["Drag"]] },
     ],

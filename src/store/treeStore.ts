@@ -91,6 +91,9 @@ interface TreeStore {
   emptyTrash: () => void;
   /** Deletes only the node; its children move up to its parent. */
   deleteNode: (nodeId: NodeId) => void;
+  /** Moves a node's branch under `parentId` at `index` (dragging it) and
+      selects it. */
+  moveBranch: (nodeId: NodeId, parentId: NodeId, index: number) => void;
   setDirection: (direction: LayoutDirection) => void;
   undo: () => void;
   redo: () => void;
@@ -366,6 +369,13 @@ export const useTreeStore = create<TreeStore>()((set, get) => ({
         editingId: null,
         editingEdgeId: null,
       };
+    }),
+
+  moveBranch: (nodeId, parentId, index) =>
+    set((s) => {
+      const next = tree.moveBranch(s.tree, nodeId, parentId, index);
+      if (next === s.tree) return s;
+      return { ...commit(s, next), selectedId: nodeId, selectedIds: [nodeId], editingId: null, editingEdgeId: null };
     }),
 
   setDirection: (direction) =>

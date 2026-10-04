@@ -83,6 +83,10 @@
   --cut-veil: 0.55;
   --cut-dash: 5 4;
 
+  /* A branch being dragged: how opaque it is, so the node it would drop
+     into shows through. */
+  --drag-opacity: 0.85;
+
   --ink-light: #ffffff;
   --ink-dark: #000000;
 }

@@ -276,6 +276,37 @@ export function deleteNode(state: TreeState, nodeId: NodeId): TreeState {
 }
 
 /**
+ * Moves a node and its whole branch under `parentId`, at position `index`
+ * among the parent's other children (counted without the moved node, and
+ * clamped to the ends). The incoming edge moves with it, label and all.
+ * Refused for a root, or a parent inside the moved branch (that would make
+ * a loop). Moving into a folded node unfolds it, so the branch stays in
+ * sight. Putting it back where it was returns the same state.
+ */
+export function moveBranch(state: TreeState, nodeId: NodeId, parentId: NodeId, index: number): TreeState {
+  const incoming = parentEdgeOf(state, nodeId);
+  const parent = state.nodes[parentId];
+  if (!incoming || !parent || subtreeIds(state, nodeId).includes(parentId)) return state;
+
+  const others = state.childEdges[parentId].filter((e) => e !== incoming.id);
+  const at = Math.max(0, Math.min(index, others.length));
+  const siblings = [...others.slice(0, at), incoming.id, ...others.slice(at)];
+  const oldSiblings = state.childEdges[incoming.source];
+  if (incoming.source === parentId && siblings.every((e, i) => e === oldSiblings[i])) return state;
+
+  return {
+    ...state,
+    nodes: parent.collapsed ? { ...state.nodes, [parentId]: { ...parent, collapsed: false } } : state.nodes,
+    edges: { ...state.edges, [incoming.id]: { ...incoming, source: parentId } },
+    childEdges: {
+      ...state.childEdges,
+      [incoming.source]: oldSiblings.filter((e) => e !== incoming.id),
+      [parentId]: siblings,
+    },
+  };
+}
+
+/**
  * Which node to select after `nodeId` is deleted: the next sibling, else
  * the previous one, else the parent -- so pressing Delete repeatedly clears
  * a row of siblings before climbing up the tree.

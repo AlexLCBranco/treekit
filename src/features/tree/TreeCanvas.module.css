@@ -114,3 +114,25 @@
 .canvas :global(.react-flow__nodesselection) {
   display: none;
 }
+
+/* Where a dragged branch would slot in as a sibling: an accent line in the
+   gap beside the node, centred on the point TreeCanvas gives it. Drawn
+   above the nodes, so the dragged branch never hides it. */
+.dropLine {
+  position: absolute;
+  z-index: var(--z-sticky);
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  pointer-events: none;
+}
+
+.dropLine[data-direction="TB"] {
+  width: var(--space-1);
+  transform: translateX(-50%);
+}
+
+.dropLine[data-direction="LR"] {
+  height: var(--space-1);
+  transform: translateY(-50%);
+}

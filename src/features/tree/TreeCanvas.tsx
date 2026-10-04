@@ -5,16 +5,19 @@ import {
   ReactFlowProvider,
   useReactFlow,
   useStore,
+  ViewportPortal,
   type NodeChange,
+  type OnNodeDrag,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
-import { layoutTree, type Size } from "../../domain/layout";
+import { dropPlacement, dropSpotAt, type DropSpot } from "../../domain/drop";
+import { layoutTree, type Point, type Size } from "../../domain/layout";
 import { contains, labelRect, marqueeGroup } from "../../domain/marquee";
-import { placeOnPage, scrollToReveal } from "../../domain/navigation";
+import { placeOnPage, scrollToReveal, type Rect } from "../../domain/navigation";
 import { ZOOM_MAX, ZOOM_MIN } from "../../domain/zoom";
-import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
+import { isRoot, parentEdgeOf, subtreeIds, visibleSubtree } from "../../domain/tree";
 import type { EdgeId, NodeId } from "../../domain/types";
 import { selectionOf, useTreeStore } from "../../store/treeStore";
 import { useViewStore } from "../../store/viewStore";
@@ -42,8 +45,9 @@ const edgeTypes = { tree: TreeEdgeView };
  * Data flow, one direction only:
  *   store tree -> tidy-tree layout (+ measured node sizes) -> glide animation
  *   -> React Flow nodes/edges.
- * React Flow is used as a renderer, not as the source of truth:
- * nodes are not draggable, because the auto-layout decides where they go.
+ * React Flow is used as a renderer, not as the source of truth: the
+ * auto-layout decides where nodes go. Dragging a node does not place it;
+ * it moves the node's branch in the tree (see the drag section below).
  * The only thing read back from React Flow is each node's measured size,
  * which the layout needs (a long title makes a taller node).
  */
@@ -60,6 +64,7 @@ function TreeCanvasInner() {
   const addRoot = useTreeStore((s) => s.addRoot);
   const startEditingLabel = useTreeStore((s) => s.startEditingLabel);
   const tool = useViewStore((s) => s.tool);
+  const moveBranch = useTreeStore((s) => s.moveBranch);
   const { setViewport, screenToFlowPosition } = useReactFlow();
 
   useTreeShortcuts();
@@ -96,7 +101,68 @@ function TreeCanvasInner() {
   if (allMeasured && !hasSettled) setHasSettled(true);
 
   const parentOf = useCallback((id: NodeId) => parentEdgeOf(tree, id)?.source ?? null, [tree]);
-  const positions = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
+  const { positions: settled, glideFrom } = useAnimatedPositions(targets, parentOf, LAYOUT_TWEEN_MS, hasSettled);
+
+  // Dragging a node, like a card in Boardkit: its branch follows the
+  // pointer, and the drop moves the branch in the tree. React Flow does the
+  // pointer tracking and reports where the node would be; the branch is
+  // drawn shifted by that much, and `spot` is where it would land (only
+  // set where dropping changes something). Dropping elsewhere puts it back.
+  const [drag, setDrag] = useState<{
+    readonly id: NodeId;
+    readonly branch: ReadonlySet<NodeId>;
+    readonly start: Point;
+    readonly offset: Point;
+    readonly spot: DropSpot | null;
+  } | null>(null);
+  const positions = useMemo(() => {
+    if (!drag) return settled;
+    const shifted = new Map(settled);
+    for (const id of drag.branch) {
+      const p = settled.get(id);
+      if (p) shifted.set(id, { x: p.x + drag.offset.x, y: p.y + drag.offset.y });
+    }
+    return shifted;
+  }, [settled, drag]);
+
+  // Where the layout puts every node: what a drop is aimed at.
+  const rects = useMemo(() => {
+    const map = new Map<NodeId, Rect>();
+    for (const [id, p] of targets) map.set(id, { ...p, ...(sizes.get(id) ?? TREE_LAYOUT.fallbackSize) });
+    return map;
+  }, [targets, sizes]);
+
+  const onNodeDragStart: OnNodeDrag<TreeFlowNode> = (_, node) => {
+    const id = node.id as NodeId;
+    const start = settled.get(id);
+    if (!start || isRoot(tree, id)) return;
+    setDrag({ id, branch: new Set(subtreeIds(tree, id)), start, offset: { x: 0, y: 0 }, spot: null });
+  };
+
+  const onNodeDrag: OnNodeDrag<TreeFlowNode> = (event, node) => {
+    if (!drag || node.id !== drag.id) return;
+    const pointer = "touches" in event ? event.touches[0] : event;
+    if (!pointer) return;
+    const at = screenToFlowPosition({ x: pointer.clientX, y: pointer.clientY });
+    const spot = dropSpotAt(tree, drag.id, at, rects, TREE_LAYOUT.nodeGap);
+    const target = spot && dropPlacement(tree, drag.id, spot) ? spot : null;
+    setDrag((d) => d && { ...d, offset: { x: node.position.x - d.start.x, y: node.position.y - d.start.y }, spot: target });
+  };
+
+  const onNodeDragStop: OnNodeDrag<TreeFlowNode> = () => {
+    if (!drag) return;
+    // Everything glides on from where it was let go: to its new place, or
+    // back to the old one.
+    const dropped = new Map<NodeId, Point>();
+    for (const id of drag.branch) {
+      const p = positions.get(id);
+      if (p) dropped.set(id, p);
+    }
+    glideFrom(dropped);
+    const placement = drag.spot && dropPlacement(tree, drag.id, drag.spot);
+    if (placement) moveBranch(drag.id, placement.parentId, placement.index);
+    setDrag(null);
+  };
 
   // The visible part of the page (the scroll container minus its
   // scrollbars), measured by hand: React Flow now measures the whole page.
@@ -183,9 +249,16 @@ function TreeCanvasInner() {
         id,
         type: "tree",
         position: positions.get(id) ?? targets.get(id) ?? { x: 0, y: 0 },
-        data: {},
+        data: drag?.branch.has(id)
+          ? LIFTED
+          : drag?.spot?.kind === "child" && drag.spot.nodeId === id
+            ? DROP_TARGET
+            : NO_DATA,
         selected: selectedSet.has(id),
-        draggable: false,
+        // Roots stay put: a tree can't become a branch of another.
+        draggable: tool === "select" && !tree.roots.includes(id),
+        // The dragged branch floats above everything else.
+        zIndex: drag?.branch.has(id) ? 1 : 0,
         // Handing React Flow back the size it measured (normally done by
         // `applyNodeChanges`): these node objects are rebuilt every render,
         // and without it React Flow forgets the measurement -- and with it
@@ -196,7 +269,7 @@ function TreeCanvasInner() {
         initialWidth: TREE_LAYOUT.fallbackSize.width,
         initialHeight: TREE_LAYOUT.fallbackSize.height,
       })),
-    [nodeIds, positions, targets, selectedSet, sizes],
+    [nodeIds, positions, targets, selectedSet, sizes, drag, tool, tree.roots],
   );
 
   const edges = useMemo<TreeFlowEdge[]>(
@@ -300,6 +373,14 @@ function TreeCanvasInner() {
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDrag={onNodeDrag}
+              onNodeDragStop={onNodeDragStop}
+              // A click that wobbles a few pixels is still a click.
+              nodeDragThreshold={4}
+              // Picking a node up doesn't select it; dropping it does.
+              selectNodesOnDrag={false}
+              autoPanOnNodeDrag={false}
               onNodeClick={(_, node) => select(node.id as NodeId)}
               onEdgeClick={(_, edge) => select(edge.target as NodeId)}
               onEdgeDoubleClick={(_, edge) => startEditingLabel(edge.id as EdgeId)}
@@ -312,7 +393,6 @@ function TreeCanvasInner() {
               // edge; here the camera never moves, the page scrolls instead.
               autoPanOnSelection={false}
               nodesConnectable={false}
-              nodesDraggable={false}
               // Double-click renames a node; zooming on it would fight that.
               zoomOnDoubleClick={false}
               // The camera is locked; the wheel scrolls the page natively.
@@ -332,6 +412,9 @@ function TreeCanvasInner() {
               attributionPosition="top-right"
             >
               <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dots)" />
+              {drag?.spot && drag.spot.kind !== "child" && (
+                <SiblingDropLine spot={drag.spot} rect={rects.get(drag.spot.nodeId)} vertical={tree.direction === "TB"} />
+              )}
             </ReactFlow>
           </div>
         </div>
@@ -344,6 +427,31 @@ function TreeCanvasInner() {
         {tool === "laser" && <LaserTrail />}
       </div>
     </NodeContextMenu>
+  );
+}
+
+/** Node `data` while dragging: the dragged branch is lifted, and the node
+    it would drop into (as a child) is the drop target. Shared objects, so a
+    node's data only changes identity when its role does. */
+const LIFTED = { lifted: true };
+const DROP_TARGET = { dropTarget: true };
+const NO_DATA = {};
+
+/**
+ * Where a dragged branch would slot in as a sibling: a line in the gap
+ * before or after the node, as long as the node is deep.
+ */
+function SiblingDropLine({ spot, rect, vertical }: { spot: DropSpot; rect: Rect | undefined; vertical: boolean }) {
+  if (!rect) return null;
+  const half = TREE_LAYOUT.nodeGap / 2;
+  const before = spot.kind === "before";
+  const style = vertical
+    ? { left: before ? rect.x - half : rect.x + rect.width + half, top: rect.y, height: rect.height }
+    : { left: rect.x, top: before ? rect.y - half : rect.y + rect.height + half, width: rect.width };
+  return (
+    <ViewportPortal>
+      <div className={styles.dropLine} data-direction={vertical ? "TB" : "LR"} style={style} />
+    </ViewportPortal>
   );
 }
 

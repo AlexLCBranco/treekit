@@ -32,6 +32,12 @@
   transform: translateY(-1px);
 }
 
+/* Every node but a root can be picked up and dropped elsewhere, like a
+   Boardkit card, so it shows the same open hand. */
+.node:not([data-root]) {
+  cursor: grab;
+}
+
 /* The root reads as the tree's heading. */
 .node[data-root] {
   font-weight: var(--weight-bold);
@@ -302,4 +308,37 @@
   opacity: 1;
   transform: translate(-50%, 0);
   transition-delay: var(--delay-hover-preview);
+}
+
+/* Being dragged, like a lifted Boardkit card: a big shadow and the
+   grabbing hand on the node held, and its whole branch a little see-through
+   so the drop target under it shows. Buttons, toolbars and notes previews
+   stay hidden, so only the nodes travel with the pointer. (The doubled
+   `.node` outranks the selected node's "show the toolbar" rule.) */
+.node[data-lifted] {
+  opacity: var(--drag-opacity);
+}
+
+.node[data-dragging],
+.node[data-dragging]:hover {
+  cursor: grabbing;
+  transform: none;
+  box-shadow:
+    0 0 0 2px var(--focus-ring),
+    var(--shadow-lifted);
+}
+
+.node.node[data-lifted] .nodeButton,
+.node.node[data-lifted] .toolbar,
+.node.node[data-lifted] .notesPreview {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A dragged branch would drop in here, as the last child. */
+.node[data-drop-target] {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--focus-ring),
+    var(--shadow-md);
 }

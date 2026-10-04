@@ -11,8 +11,10 @@ import styles from "./TreeNodeView.module.css";
 
 /** React Flow's node record for a tree node. The node's content is not
     copied in here: the component reads it from the store by id, so React
-    Flow's node array only carries position and selection. */
-export type TreeFlowNode = Node<Record<string, never>, "tree">;
+    Flow's node array only carries position, selection and drag state
+    (`lifted`: part of the branch being dragged; `dropTarget`: that
+    branch would drop into this node). */
+export type TreeFlowNode = Node<{ readonly lifted?: boolean; readonly dropTarget?: boolean }, "tree">;
 
 /**
  * One node on the canvas: its title (inline-renamable), a "+" on the side
@@ -28,7 +30,7 @@ export type TreeFlowNode = Node<Record<string, never>, "tree">;
  * re-renders that node alone. (The hidden count is a number, so the
  * selector's result only "changes" when the count does.)
  */
-export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodeProps<TreeFlowNode>) {
+export const TreeNodeView = memo(function TreeNodeView({ id, selected, dragging, data }: NodeProps<TreeFlowNode>) {
   const nodeId = id as NodeId;
   const node = useTreeStore((s) => s.tree.nodes[nodeId]);
   const isEditing = useTreeStore((s) => s.editingId === nodeId);
@@ -82,6 +84,9 @@ export const TreeNodeView = memo(function TreeNodeView({ id, selected }: NodePro
       data-notes={node.notes ? true : undefined}
       data-cut={isCut || undefined}
       data-direction={direction}
+      data-dragging={dragging || undefined}
+      data-lifted={data.lifted || undefined}
+      data-drop-target={data.dropTarget || undefined}
       style={style}
       onDoubleClick={() => startEditing(nodeId)}
     >
