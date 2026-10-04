@@ -11,7 +11,7 @@ import { memo, useCallback } from "react";
 import { InlineEditable } from "../../components/InlineEditable";
 import type { EdgeRoute, Size } from "../../domain/layout";
 import type { EdgeId } from "../../domain/types";
-import { cutIdsOf, useTreeStore } from "../../store/treeStore";
+import { cutIdsOf, selectionOf, useTreeStore } from "../../store/treeStore";
 import styles from "./TreeEdgeView.module.css";
 
 export interface TreeEdgeData extends Record<string, unknown> {
@@ -54,9 +54,11 @@ export const TreeEdgeView = memo(function TreeEdgeView({
   const edgeId = id as EdgeId;
   const label = useTreeStore((s) => s.tree.edges[edgeId]?.label ?? "");
   const isEditing = useTreeStore((s) => s.editingEdgeId === edgeId);
-  const isTargetSelected = useTreeStore(
-    (s) => s.selectedId !== null && s.tree.edges[edgeId]?.target === s.selectedId,
-  );
+  // Lit with its node, including when that node is part of a marquee group.
+  const isTargetSelected = useTreeStore((s) => {
+    const target = s.tree.edges[edgeId]?.target;
+    return target !== undefined && selectionOf(s).includes(target);
+  });
   const isCut = useTreeStore((s) => {
     const target = s.tree.edges[edgeId]?.target;
     return target !== undefined && cutIdsOf(s.tree).has(target);

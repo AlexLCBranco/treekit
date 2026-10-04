@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-03, v0.0.32_
+_Last updated: 2026-10-03, v0.0.33_
 
 ## What it is
 
@@ -21,7 +21,7 @@ canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
 icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
 TypeScript (tree model and operations, layout, keyboard navigation, page and zoom, undo history,
-save format, Mermaid import/export)
+save format, Mermaid import/export, what the marquee picks)
 with Vitest tests.
 
 ## What works now
@@ -36,7 +36,9 @@ with Vitest tests.
   (drag leaves a fading red trail). Keys V, K; the tool is not remembered
   across visits
 - Select tool: dragging empty page draws a marquee that picks every node
-  it touches. With two or more picked, a selection bar appears above the
+  wholly inside it. Edge labels count too: boxing a label picks the node it
+  leads to (a label belongs to its node), and every picked node's label
+  lights up with it. With two or more picked, a selection bar appears above the
   cursor tools: how many are picked, a colour dropdown (shows the shared
   colour, or a mixed dot), Keep / Maybe / Cut toggles (pressed when all
   have it; pressing again clears it), collapse / expand all their

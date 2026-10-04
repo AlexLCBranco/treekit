@@ -4,12 +4,14 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/base.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { layoutTree, type Size } from "../../domain/layout";
+import { contains, labelRect, marqueeGroup } from "../../domain/marquee";
 import { placeOnPage, scrollToReveal } from "../../domain/navigation";
 import { ZOOM_MAX, ZOOM_MIN } from "../../domain/zoom";
 import { parentEdgeOf, visibleSubtree } from "../../domain/tree";
@@ -215,20 +217,44 @@ function TreeCanvasInner() {
     [edgeIds, tree.edges, routes, onLabelSize],
   );
 
-  const onNodesChange = useCallback((changes: NodeChange<TreeFlowNode>[]) => {
-    // The marquee: React Flow reports which nodes its box now covers as
-    // "select" changes; turn them into the store's group selection.
-    const picks = changes.filter((c) => c.type === "select");
-    if (picks.length > 0) {
-      const store = useTreeStore.getState();
-      const group = new Set(selectionOf(store));
-      for (const change of picks) {
-        if (change.type !== "select") continue;
-        if (change.selected) group.add(change.id as NodeId);
-        else group.delete(change.id as NodeId);
-      }
-      store.selectMany([...group]);
+  // The marquee. React Flow only checks nodes against its box, so the group
+  // is worked out here instead, from the box itself: every node it holds,
+  // plus the node of every label it holds (a label belongs to its node).
+  const marquee = useStore((s) => (s.userSelectionActive ? s.userSelectionRect : null));
+  const transform = useStore((s) => s.transform);
+  useEffect(() => {
+    if (!marquee) return;
+    const [tx, ty, scale] = transform;
+    const box = {
+      x: (marquee.x - tx) / scale,
+      y: (marquee.y - ty) / scale,
+      width: marquee.width / scale,
+      height: marquee.height / scale,
+    };
+    const rectOf = (id: NodeId) => {
+      const p = positions.get(id);
+      return p ? { ...p, ...(sizes.get(id) ?? TREE_LAYOUT.fallbackSize) } : null;
+    };
+    const picked = new Set<NodeId>();
+    for (const id of nodeIds) {
+      const rect = rectOf(id);
+      if (rect && contains(box, rect)) picked.add(id);
     }
+    for (const edgeId of edgeIds) {
+      const target = tree.edges[edgeId].target;
+      const size = labelSizes.get(edgeId);
+      const route = routes.get(edgeId);
+      const rect = rectOf(target);
+      if (!size || !route || !rect) continue;
+      if (contains(box, labelRect(rect, size, route.labelBeforeTarget, tree.direction))) picked.add(target);
+    }
+    const store = useTreeStore.getState();
+    store.selectMany(marqueeGroup(selectionOf(store), picked));
+  }, [marquee, transform, nodeIds, edgeIds, positions, sizes, labelSizes, routes, tree]);
+
+  const onNodesChange = useCallback((changes: NodeChange<TreeFlowNode>[]) => {
+    // Only measured sizes are read back. React Flow's "select" changes are
+    // ignored: the marquee is handled above, clicks by onNodeClick.
     setSizes((prev) => {
       let next: Map<NodeId, Size> | null = null;
       for (const change of changes) {
