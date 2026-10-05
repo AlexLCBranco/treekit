@@ -31,19 +31,25 @@ body {
   overscroll-behavior: none;
 }
 
-button {
-  font: inherit;
-  color: inherit;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
+/* In Tailwind's base layer, not loose: CSS outside any layer beats every
+   layered rule, so a loose reset here stripped the padding, border and
+   colour from shadcn's buttons (Tailwind utilities, layered). CSS Modules
+   are outside any layer, so they still override this as before. */
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+  }
 
-input,
-textarea {
-  font: inherit;
-  color: inherit;
+  input,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
 }
 
 :focus {

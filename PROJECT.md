@@ -1,6 +1,6 @@
 # Treekit — project summary
 
-_Last updated: 2026-10-04, v0.0.37_
+_Last updated: 2026-10-05, v0.0.38_
 
 ## What it is
 
@@ -18,7 +18,7 @@ Vite, React 19, TypeScript (strict), Zustand, React Flow (`@xyflow/react`)
 as the renderer (camera locked, the page scrolls natively), a small hand-written tidy-tree layout (no layout
 library), CSS Modules + design tokens (copied from Boardkit) for the
 canvas, Tailwind v4 + shadcn/ui (Radix) for menus and dialogs, lucide
-icons, html-to-image for PNG/SVG export. No backend: saved in the browser's localStorage. Layers:
+icons, html-to-image for PNG/SVG export. The page's button/input reset sits in Tailwind's `base` layer so it never overrides shadcn's button styles (unlayered CSS beats every layer); CSS Modules stay unlayered and still win over the reset. No backend: saved in the browser's localStorage. Layers:
 `app -> features -> components -> store -> domain`; `domain/` is pure
 TypeScript (tree model and operations, layout, keyboard navigation, page and zoom, undo history,
 save format, Mermaid import/export, what the marquee picks, where a
